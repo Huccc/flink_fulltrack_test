@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.huc</groupId>
+    <artifactId>allflinksql3</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <flink.version>1.11.1</flink.version>
+        <scala.binary.version>2.11</scala.binary.version>
+        <hadoop.version>2.6.5</hadoop.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-uber_${scala.binary.version}</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-uber-blink_${scala.binary.version}</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--        test 2-->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-api-java-bridge_${scala.binary.version}</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-planner-blink_${scala.binary.version}</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-clients_2.11</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-java</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-scala_${scala.binary.version}</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-streaming-java_${scala.binary.version}</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <!--        <dependency>-->
+        <!--            <groupId>com.oracle.database.jdbc</groupId>-->
+        <!--            <artifactId>ojdbc8</artifactId>-->
+        <!--            <version>12.2.0.1</version>-->
+        <!--            <scope>provided</scope>-->
+        <!--        </dependency>-->
+        <!--    kafka    -->
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-sql-connector-kafka_2.11</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-kafka_${scala.binary.version}</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-json</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <!--   redis   -->
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-connector-redis_${scala.binary.version}</artifactId>
+            <version>1.10.0.2</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/main/resources/lib/ep-flink-connector-redis_2.11-1.10.0.2.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-mt5101</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-mt5101-1.11.1.15-SNAPSHOT.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-mt3102</artifactId>
+            <version>1.11.1.15-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-mt3102-1.11.1.15-SNAPSHOT.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-mt5102</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-mt5102-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-map</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-map-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-mt9999</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-mt9999-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-ecl300</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-ecl300-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-jsonarray-to-row-in-coarri</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-jsonarray-to-row-in-coarri-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-jsonarray-to-row-in-costco</artifactId>
+            <version>1.11.1.14-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-jsonarray-to-row-in-costco-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-jsonarray-to-row-in-costrp</artifactId>
+            <version>1.11.1.14-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-jsonarray-to-row-in-costrp-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-jsonarray-to-row-in-iftvgm</artifactId>
+            <version>1.11.1.14-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-jsonarray-to-row-in-iftvgm-1.11.1.15.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-common</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/main/resources/lib/ep-flink-table-function-common-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-connector-jdbc_2.11</artifactId>
+            <version>1.11.1.3</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/main/resources/lib/ep-flink-connector-jdbc_2.11-1.11.1.3.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+            <version>12.2.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-runtime-web_2.11</artifactId>
+            <version>${flink.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--Flink默认使用的是slf4j记录日志，相当于一个日志的接口,我们这里使用log4j作为具体的日志实现-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.25</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>1.7.25</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-to-slf4j</artifactId>
+            <version>2.14.0</version>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>kahadb</artifactId>
+            <version>5.7.0</version>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.1.0</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.4.3</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <!-- 新增一个 uber jar 到 dist/ 目录，并阻止 maven-jar-plugin 插件构建生成 original jar -->
+                            <!--                            <outputFile>${project.basedir}${file.separator}${build.dir}${file.separator}${project.artifactId}.jar</outputFile>-->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>junit:junit</exclude>
+                                </excludes>
+                            </artifactSet>
+                            <transformers>
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    <!--    <build>-->
+    <!--        <plugins>-->
+    <!--            <plugin>-->
+    <!--                <groupId>org.apache.maven.plugins</groupId>-->
+    <!--                <artifactId>maven-compiler-plugin</artifactId>-->
+    <!--                <version>3.8.1</version>-->
+    <!--                <configuration>-->
+    <!--                    <encoding>UTF-8</encoding>-->
+    <!--                    <source>1.8</source>-->
+    <!--                    <target>1.8</target>-->
+    <!--                </configuration>-->
+    <!--            </plugin>-->
+
+    <!--            <plugin>-->
+    <!--                <groupId>org.apache.maven.plugins</groupId>-->
+    <!--                <artifactId>maven-shade-plugin</artifactId>-->
+    <!--                <version>2.4.3</version>-->
+    <!--                <executions>-->
+    <!--                    <execution>-->
+    <!--                        <phase>package</phase>-->
+    <!--                        <goals>-->
+    <!--                            <goal>shade</goal>-->
+    <!--                        </goals>-->
+    <!--                        <configuration>-->
+    <!--                            &lt;!&ndash; 新增一个 uber jar 到 dist/ 目录，并阻止 maven-jar-plugin 插件构建生成 original jar &ndash;&gt;-->
+    <!--                            &lt;!&ndash;                            <outputFile>${project.basedir}${file.separator}${build.dir}${file.separator}${project.artifactId}.jar</outputFile>&ndash;&gt;-->
+    <!--                            <filters>-->
+    <!--                                <filter>-->
+    <!--                                    <artifact>*:*</artifact>-->
+    <!--                                    <excludes>-->
+    <!--                                        <exclude>META-INF/*.SF</exclude>-->
+    <!--                                        <exclude>META-INF/*.DSA</exclude>-->
+    <!--                                        <exclude>META-INF/*.RSA</exclude>-->
+    <!--                                    </excludes>-->
+    <!--                                </filter>-->
+    <!--                            </filters>-->
+    <!--                            <artifactSet>-->
+    <!--                                <excludes>-->
+    <!--                                    <exclude>junit:junit</exclude>-->
+    <!--                                </excludes>-->
+    <!--                            </artifactSet>-->
+    <!--                            <transformers>-->
+    <!--                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>-->
+    <!--                            </transformers>-->
+    <!--                        </configuration>-->
+    <!--                    </execution>-->
+    <!--                </executions>-->
+    <!--            </plugin>-->
+    <!--        </plugins>-->
+    <!--    </build>-->
+
+</project>
