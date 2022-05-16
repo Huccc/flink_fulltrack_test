@@ -96,7 +96,7 @@ public class elc300_test {
 				"select '1359023762372042843' as msgId," +
 				"'ECL300' as bizId," +
 				"'message_data' as msgType," +
-				"'null' as bizUniqueId," +
+				"'ecl300' as bizUniqueId," +
 				"'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
 				"'" + msg + "'" + "as parseData");
 	}
