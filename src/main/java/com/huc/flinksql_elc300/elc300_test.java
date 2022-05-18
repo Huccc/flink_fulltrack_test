@@ -49,7 +49,8 @@ public class elc300_test {
 				"                    \"DOCK_NAME\":\"明东\",\n" +
 				"                    \"WRAP_TYPE\":\"1\",\n" +
 				"                    \"CNTR_NO\":\"TWCU8058021\",\n" +
-				"                    \"SHIP_CODE\":\"UN7433177\",\n" +
+//				"                    \"SHIP_CODE\":\"UN7433177\",\n" +
+				"                    \"SHIP_CODE\":\"UN89052320\",\n" +
 				"                    \"VOYAGE\":\"1944W\",\n" +
 				"                    \"REMARK\":\"\"\n" +
 				"                }\n" +
@@ -70,7 +71,8 @@ public class elc300_test {
 				"                    \"DOCK_NAME\":\"明1\",\n" +
 				"                    \"WRAP_TYPE\":\"11\",\n" +
 				"                    \"CNTR_NO\":\"TWCU805802111\",\n" +
-				"                    \"SHIP_CODE\":\"UN8905232\",\n" +
+//				"                    \"SHIP_CODE\":\"UN8905232\",\n" +
+				"                    \"SHIP_CODE\":\"UN9133329\",\n" +
 				"                    \"VOYAGE\":\"1911W\",\n" +
 				"                    \"REMARK\":\"11\"\n" +
 				"                }\n" +

@@ -42,7 +42,7 @@ public class mt5101_test_mt9999 {
 				"select '1359023762372042843' as msgId," +
 				"'MT9999' as bizId," +
 				"'message_data' as msgType," +
-				"'null' as bizUniqueId," +
+				"'MT9999_TEST' as bizUniqueId," +
 				"'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
 				"'" + msg2 + "'" + "as parseData");
 	}

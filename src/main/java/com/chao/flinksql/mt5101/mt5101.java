@@ -62,11 +62,12 @@ public class mt5101 {
 				"    BIZ_STATUS_DESC STRING,\n" +
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
+				"    UUID STRING,\n" +
 				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'mt5101_test',\n" +
+				"  'topic' = 'mt5101_test_ctnr',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
 				"  'properties.group.id' = 'mt5101_test',\n" +
 				"  'format' = 'json'\n" +
@@ -97,11 +98,12 @@ public class mt5101 {
 				"    BIZ_STATUS_DESC STRING,\n" +
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
+				"    UUID STRING,\n" +
 				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'mt5101_test',\n" +
+				"  'topic' = 'mt5101_test_bill',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
 				"  'properties.group.id' = 'mt5101_test',\n" +
 				"  'format' = 'json'\n" +
@@ -246,7 +248,7 @@ public class mt5101 {
 				"create view mt5101TB as\n" +
 				"select  msgId,\n" +
 				"        JSON_TO_ROW_IN_MT5101(parseData) as pData,\n" +
-				"        LASTUPDATEDDT\n" +
+				"        LASTUPDATEDDT,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"from kafka_source_data\n" +
 				"WHERE msgType = 'message_data' AND bizId = 'MT5101'");
 
@@ -258,7 +260,7 @@ public class mt5101 {
 		tEnv.executeSql("" +
 				"create view mt5101common as\n" +
 				"select\n" +
-				"    msgId,\n" +
+				"    msgId,GID,\n" +
 				"    LASTUPDATEDDT,\n" +
 				"    pData.Head.MessageID as Head_MessageID,\n" +
 				"    pData.Head.FunctionCode as Head_FunctionCode,\n" +
@@ -274,8 +276,8 @@ public class mt5101 {
 				"    pData.Declaration.BorderTransportMeans.UnloadingLocation.ID as BorderTransportMeans_UnloadingLocation_ID\n" +
 				"from mt5101TB");
 		
-		Table mt5101common_table = tEnv.sqlQuery("select * from mt5101common");
-		tEnv.toAppendStream(mt5101common_table, Row.class).print();
+//		Table mt5101common_table = tEnv.sqlQuery("select * from mt5101common");
+//		tEnv.toAppendStream(mt5101common_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 注册解析函数9999
@@ -286,7 +288,7 @@ public class mt5101 {
 				"create view mt9999TB as\n" +
 				"select  msgId,\n" +
 				"        LASTUPDATEDDT,\n" +
-				"        mt9999_JSON_TO_ROW_IN_MT5101(parseData) as p9Data\n" +
+				"        mt9999_JSON_TO_ROW_IN_MT5101(parseData) as p9Data,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"from kafka_source_data\n" +
 				"WHERE msgType = 'message_data' AND bizId = 'MT9999'");
 		
@@ -294,7 +296,7 @@ public class mt5101 {
 		tEnv.executeSql("" +
 				"create view mt9999common as\n" +
 				"select\n" +
-				"    msgId,LASTUPDATEDDT,\n" +
+				"    msgId,GID,LASTUPDATEDDT,\n" +
 				"    p9Data.Head.MessageID as MessageID,\n" +
 				"    p9Data.Head.FunctionCode as FunctionCode,\n" +
 				"    p9Data.Head.MessageType as MessageType,\n" +
@@ -316,7 +318,7 @@ public class mt5101 {
 		tEnv.executeSql("" +
 				"create view mt9999bill as\n" +
 				"select\n" +
-				"    msgId,\n" +
+				"    msgId,GID,\n" +
 				"    LASTUPDATEDDT,\n" +
 				"    MessageID,\n" +
 				"    FunctionCode,\n" +
@@ -333,15 +335,15 @@ public class mt5101 {
 				"from (select * from mt9999common where Consignment is not null ) as temp2\n" +
 				"    cross join unnest(Consignment) AS Consignment(TransportContractDocument,AssociatedTransportDocument,ResponseType)");
 		
-		Table mt9999bill_table = tEnv.sqlQuery("select * from mt9999bill");
-		tEnv.toAppendStream(mt9999bill_table, Row.class).print();
+//		Table mt9999bill_table = tEnv.sqlQuery("select * from mt9999bill");
+//		tEnv.toAppendStream(mt9999bill_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 展开9999的5101回执01箱,已处理IMO、航次、箱号
 		tEnv.executeSql("" +
 				"create view mt9999ctnr as\n" +
 				"select\n" +
-				"    msgId,\n" +
+				"    msgId,GID,\n" +
 				"    LASTUPDATEDDT,\n" +
 				"    MessageID,\n" +
 				"    FunctionCode,\n" +
@@ -371,7 +373,7 @@ public class mt5101 {
 				"from\n" +
 				"(\n" +
 				"    select\n" +
-				"        mt5101common.msgId,\n" +
+				"        mt5101common.msgId,concat(mt5101common.GID,',',mt9999bill.GID) AS GID,\n" +
 				"        mt5101common.BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO\n" +
 				"        mt5101common.BorderTransportMeans_Name as VSL_NAME, --船名\n" +
 				"        mt5101common.BorderTransportMeans_JourneyID as VOYAGE, --航次\n" +
@@ -408,7 +410,7 @@ public class mt5101 {
 		tEnv.executeSql("" +
 				"create view ImportTallyCtnr as\n" +
 				"select\n" +
-				"    mt9999ctnr.msgId,\n" +
+				"    mt9999ctnr.msgId,mt9999ctnr.GID,\n" +
 				"    mt9999ctnr.BorderTransportMeans_ID as VSL_IMO_NO,--船舶IMO\n" +
 				"    if(dim1.res <> '', dim1.res, 'N/A') as VSL_NAME,--船名\n" +
 				"    mt9999ctnr.BorderTransportMeans_JourneyID as VOYAGE,--航次\n" +
@@ -442,6 +444,7 @@ public class mt5101 {
 				"create view ImportTallyBill_fromCTNR as\n" +
 				"select\n" +
 				"    ImportTallyCtnr.msgId,\n" +
+				"    ImportTallyCtnr.GID,\n" +
 				"    ImportTallyCtnr.VSL_IMO_NO,\n" +
 				"    ImportTallyCtnr.VSL_NAME,\n" +
 				"    ImportTallyCtnr.VOYAGE,\n" +
@@ -477,6 +480,7 @@ public class mt5101 {
 				"create view ImportTallyBill as\n" +
 				"select\n" +
 				"    mt9999bill.msgId,\n" +
+				"    mt9999bill.GID,\n" +
 				"    BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO\n" +
 				"    if(dim1.res <> '', dim1.res, 'N/A') as VSL_NAME, --船名\n" +
 				"    BorderTransportMeans_JourneyID as VOYAGE, --航次\n" +
@@ -511,6 +515,7 @@ public class mt5101 {
 				"create view ImportDispatchTallyBill as\n" +
 				"select\n" +
 				"    mt9999bill.msgId,\n" +
+				"    mt9999bill.GID,\n" +
 				"    BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO\n" +
 				"    if(dim1.res <> '', dim1.res, 'N/A') as VSL_NAME, --船名\n" +
 				"    BorderTransportMeans_JourneyID as VOYAGE, --航次\n" +
@@ -546,6 +551,7 @@ public class mt5101 {
 				"create view ImportDispatchTallyBill_fromCTNR as\n" +
 				"select\n" +
 				"    ImportTallyCtnr.msgId,\n" +
+				"    ImportTallyCtnr.GID,\n" +
 				"    ImportTallyCtnr.VSL_IMO_NO,\n" +
 				"    ImportTallyCtnr.VSL_NAME,\n" +
 				"    ImportTallyCtnr.VOYAGE,\n" +
@@ -601,15 +607,15 @@ public class mt5101 {
 		statementSet.addInsertSql("" +
 				"insert into kafka_track_biz_status_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_COARRIBULK' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_COARRIBULK' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"(select sm2.UUID,\n" +
+				"(select sm2.GID,\n" +
 				"  sm2.VSL_IMO_NO,sm2.VSL_NAME,sm2.VOYAGE,sm2.ACCURATE_IMONO,sm2.ACCURATE_VSLNAME,\n" +
 				"  sm2.BL_NO,sm2.MASTER_BL_NO,sm2.I_E_MARK,sm2.BIZ_STAGE_NO,sm2.BIZ_STAGE_CODE,\n" +
 				"  sm2.BIZ_STAGE_NAME,sm2.BIZ_TIME,sm2.BIZ_STATUS_CODE,sm2.BIZ_STATUS,\n" +
-				"  sm2.BIZ_STATUS_DESC,sm2.LASTUPDATEDDT,sm2.ISDELETED,sm2.BIZ_STATUS_IFFECTIVE\n" +
+				"  sm2.BIZ_STATUS_DESC,sm2.LASTUPDATEDDT,sm2.ISDELETED,sm2.UUID,sm2.BIZ_STATUS_IFFECTIVE\n" +
 				"from ship_unload as sm2 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF sm2.LASTUPDATEDDT as ospd1\n" +
 				"on 'DATA_FLINK_FULL_FLINK_TRACING_COARRIBULK'=ospd1.APP_NAME\n" +
 				"and 'DM.TRACK_BIZ_STATUS_BILL'=ospd1.TABLE_NAME\n" +
@@ -635,15 +641,15 @@ public class mt5101 {
 		statementSet.addInsertSql("" +
 				"insert into kafka_track_biz_status_ctnr(GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from (\n" +
-				"select tc1.UUID,\n" +
+				"select tc1.GID,\n" +
 				"  tc1.VSL_IMO_NO,tc1.VSL_NAME,tc1.VOYAGE,tc1.ACCURATE_IMONO,tc1.ACCURATE_VSLNAME,\n" +
 				"  tc1.CTNR_NO,tc1.I_E_MARK,tc1.BIZ_STAGE_NO,tc1.BIZ_STAGE_CODE,tc1.BIZ_STAGE_NAME,\n" +
 				"  tc1.BIZ_TIME,tc1.BIZ_STATUS_CODE,tc1.BIZ_STATUS,tc1.BIZ_STATUS_DESC,\n" +
-				"  tc1.LASTUPDATEDDT,tc1.ISDELETED,tc1.BIZ_STATUS_IFFECTIVE\n" +
+				"  tc1.LASTUPDATEDDT,tc1.ISDELETED,tc1.UUID,tc1.BIZ_STATUS_IFFECTIVE\n" +
 				"from ImportTallyCtnr as tc1 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF tc1.LASTUPDATEDDT as ospd2\n" +
 				"on 'DATA_FLINK_FULL_FLINK_TRACING_MT5101'=ospd2.APP_NAME\n" +
 				"and 'DM.TRACK_BIZ_STATUS_CTNR'=ospd2.TABLE_NAME\n" +
@@ -669,15 +675,15 @@ public class mt5101 {
 		statementSet.addInsertSql("" +
 				"insert into kafka_track_biz_status_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"(select tbfc1.UUID,\n" +
+				"(select tbfc1.GID,\n" +
 				"  tbfc1.VSL_IMO_NO,tbfc1.VSL_NAME,tbfc1.VOYAGE,tbfc1.ACCURATE_IMONO,tbfc1.ACCURATE_VSLNAME,\n" +
 				"  tbfc1.BL_NO,tbfc1.MASTER_BL_NO,tbfc1.I_E_MARK,tbfc1.BIZ_STAGE_NO,tbfc1.BIZ_STAGE_CODE,\n" +
 				"  tbfc1.BIZ_STAGE_NAME,tbfc1.BIZ_TIME,tbfc1.BIZ_STATUS_CODE,tbfc1.BIZ_STATUS,\n" +
-				"  tbfc1.BIZ_STATUS_DESC,tbfc1.LASTUPDATEDDT,tbfc1.ISDELETED,tbfc1.BIZ_STATUS_IFFECTIVE\n" +
+				"  tbfc1.BIZ_STATUS_DESC,tbfc1.LASTUPDATEDDT,tbfc1.ISDELETED,tbfc1.UUID,tbfc1.BIZ_STATUS_IFFECTIVE\n" +
 				"from ImportTallyBill_fromCTNR as tbfc1 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF tbfc1.LASTUPDATEDDT as ospd3\n" +
 				"on 'DATA_FLINK_FULL_FLINK_TRACING_MT5101'=ospd3.APP_NAME\n" +
 				"and 'DM.TRACK_BIZ_STATUS_BILL'=ospd3.TABLE_NAME\n" +
@@ -703,15 +709,15 @@ public class mt5101 {
 		statementSet.addInsertSql("" +
 				"insert into kafka_track_biz_status_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"(select tb2.UUID,\n" +
+				"(select tb2.GID,\n" +
 				"  tb2.VSL_IMO_NO,tb2.VSL_NAME,tb2.VOYAGE,tb2.ACCURATE_IMONO,tb2.ACCURATE_VSLNAME,\n" +
 				"  tb2.BL_NO,tb2.MASTER_BL_NO,tb2.I_E_MARK,tb2.BIZ_STAGE_NO,tb2.BIZ_STAGE_CODE,\n" +
 				"  tb2.BIZ_STAGE_NAME,tb2.BIZ_TIME,tb2.BIZ_STATUS_CODE,tb2.BIZ_STATUS,\n" +
-				"  tb2.BIZ_STATUS_DESC,tb2.LASTUPDATEDDT,tb2.ISDELETED,tb2.BIZ_STATUS_IFFECTIVE\n" +
+				"  tb2.BIZ_STATUS_DESC,tb2.LASTUPDATEDDT,tb2.ISDELETED,tb2.UUID,tb2.BIZ_STATUS_IFFECTIVE\n" +
 				"from ImportTallyBill as tb2 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF tb2.LASTUPDATEDDT as ospd4\n" +
 				"on 'DATA_FLINK_FULL_FLINK_TRACING_MT5101'=ospd4.APP_NAME\n" +
 				"and 'DM.TRACK_BIZ_STATUS_BILL'=ospd4.TABLE_NAME\n" +
@@ -737,15 +743,15 @@ public class mt5101 {
 		statementSet.addInsertSql("" +
 				"insert into kafka_track_biz_status_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101_DISPATCH' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101_DISPATCH' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"(select tbfc1.UUID,\n" +
+				"(select tbfc1.GID,\n" +
 				"  tbfc1.VSL_IMO_NO,tbfc1.VSL_NAME,tbfc1.VOYAGE,tbfc1.ACCURATE_IMONO,tbfc1.ACCURATE_VSLNAME,\n" +
 				"  tbfc1.BL_NO,tbfc1.MASTER_BL_NO,tbfc1.I_E_MARK,tbfc1.BIZ_STAGE_NO,tbfc1.BIZ_STAGE_CODE,\n" +
 				"  tbfc1.BIZ_STAGE_NAME,tbfc1.BIZ_TIME,tbfc1.BIZ_STATUS_CODE,tbfc1.BIZ_STATUS,\n" +
-				"  tbfc1.BIZ_STATUS_DESC,tbfc1.LASTUPDATEDDT,tbfc1.ISDELETED,tbfc1.BIZ_STATUS_IFFECTIVE\n" +
+				"  tbfc1.BIZ_STATUS_DESC,tbfc1.LASTUPDATEDDT,tbfc1.ISDELETED,tbfc1.UUID,tbfc1.BIZ_STATUS_IFFECTIVE\n" +
 				"from ImportDispatchTallyBill_fromCTNR as tbfc1 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF tbfc1.LASTUPDATEDDT as ospd3\n" +
 				"on 'DATA_FLINK_FULL_FLINK_TRACING_MT5101_DISPATCH'=ospd3.APP_NAME\n" +
 				"and 'DM.TRACK_BIZ_STATUS_BILL'=ospd3.TABLE_NAME\n" +
@@ -776,15 +782,15 @@ public class mt5101 {
 		statementSet.addInsertSql("" +
 				"insert into kafka_track_biz_status_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101_DISPATCH' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_MT5101_DISPATCH' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"(select tb2.UUID,\n" +
+				"(select tb2.GID,\n" +
 				"  tb2.VSL_IMO_NO,tb2.VSL_NAME,tb2.VOYAGE,tb2.ACCURATE_IMONO,tb2.ACCURATE_VSLNAME,\n" +
 				"  tb2.BL_NO,tb2.MASTER_BL_NO,tb2.I_E_MARK,tb2.BIZ_STAGE_NO,tb2.BIZ_STAGE_CODE,\n" +
 				"  tb2.BIZ_STAGE_NAME,tb2.BIZ_TIME,tb2.BIZ_STATUS_CODE,tb2.BIZ_STATUS,\n" +
-				"  tb2.BIZ_STATUS_DESC,tb2.LASTUPDATEDDT,tb2.ISDELETED,tb2.BIZ_STATUS_IFFECTIVE\n" +
+				"  tb2.BIZ_STATUS_DESC,tb2.LASTUPDATEDDT,tb2.ISDELETED,tb2.UUID,tb2.BIZ_STATUS_IFFECTIVE\n" +
 				"from ImportDispatchTallyBill as tb2 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF tb2.LASTUPDATEDDT as ospd4\n" +
 				"on 'DATA_FLINK_FULL_FLINK_TRACING_MT5101_DISPATCH'=ospd4.APP_NAME\n" +
 				"and 'DM.TRACK_BIZ_STATUS_BILL'=ospd4.TABLE_NAME\n" +

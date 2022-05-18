@@ -90,7 +90,7 @@ public class mt5101_test_mt5101 {
 				"select '1359023762372042843' as msgId," +
 				"'MT5101' as bizId," +
 				"'message_data' as msgType," +
-				"'null' as bizUniqueId," +
+				"'MT5101_TEST' as bizUniqueId," +
 				"'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
 				"'" + msg1 + "'" + "as parseData");
 	}

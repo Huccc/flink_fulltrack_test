@@ -14,6 +14,7 @@ public class mt5102 {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 		EnvironmentSettings settings = EnvironmentSettings.newInstance().useBlinkPlanner().inStreamingMode().build();
 		StreamTableEnvironment tEnv = StreamTableEnvironment.create(env, settings);
+		env.setParallelism(1);
 		
 		// TODO kafka数据源
 		tEnv.executeSql("" +
@@ -34,8 +35,8 @@ public class mt5102 {
 				"  'scan.startup.mode' = 'group-offsets'\n" +
 				")");
 		
-		Table kafka_source_data_table = tEnv.sqlQuery("select * from kafka_source_data");
-		tEnv.toAppendStream(kafka_source_data_table, Row.class).print();
+//		Table kafka_source_data_table = tEnv.sqlQuery("select * from kafka_source_data");
+//		tEnv.toAppendStream(kafka_source_data_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 维表redis
@@ -229,7 +230,7 @@ public class mt5102 {
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'topic-bdpevent-flink-push',\n" +
+				"  'topic' = 'MT5102_BILL',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
 				"  'format' = 'json'\n" +
 				")");
@@ -293,7 +294,7 @@ public class mt5102 {
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'topic-bdpevent-flink-push',\n" +
+				"  'topic' = 'MT5102_CTNR',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
 				"  'format' = 'json'\n" +
 				")");
@@ -350,8 +351,8 @@ public class mt5102 {
 				"from (select * from mt5102common where Consignment is not null) as temp1\n" +
 				"cross join unnest(Consignment) AS Consignment(TransportContractDocument,AssociatedTransportDocument,ConsignmentPackaging,TotalGrossMassMeasure,GrossVolumeMeasure)");
 		
-		Table mt5102bill_table = tEnv.sqlQuery("select * from mt5102bill");
-		tEnv.toAppendStream(mt5102bill_table, Row.class).print();
+//		Table mt5102bill_table = tEnv.sqlQuery("select * from mt5102bill");
+//		tEnv.toAppendStream(mt5102bill_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 注册解析函数9999
@@ -403,8 +404,8 @@ public class mt5102 {
 				"cross join unnest(Consignment) AS Consignment(TransportContractDocument,AssociatedTransportDocument,ResponseType)\n" +
 				"where MessageType='MT5102'");
 		
-		Table mt9999bill_table = tEnv.sqlQuery("select * from mt9999bill");
-		tEnv.toAppendStream(mt9999bill_table, Row.class).print();
+//		Table mt9999bill_table = tEnv.sqlQuery("select * from mt9999bill");
+//		tEnv.toAppendStream(mt9999bill_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 展开9999的5102回执01箱,已处理IMO、航次、箱号
@@ -421,8 +422,8 @@ public class mt5102 {
 				"cross join unnest(TransportEquipment) AS TransportEquipment(EquipmentIdentification,ResponseType)\n" +
 				"where MessageType='MT5102'");
 		
-		Table mt9999ctnr_table = tEnv.sqlQuery("select * from mt9999ctnr");
-		tEnv.toAppendStream(mt9999ctnr_table, Row.class).print();
+//		Table mt9999ctnr_table = tEnv.sqlQuery("select * from mt9999ctnr");
+//		tEnv.toAppendStream(mt9999ctnr_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 理货（箱）       直接从mt9999回执中取值
@@ -515,8 +516,8 @@ public class mt5102 {
 				"    and tallyCtnr.CTNR_NO = oBCd.CTNR_NO\n" +
 				"where oBCd.BL_NO is not null and oBCd.ISDELETED=0");   //--筛选掉取不到数的情况
 		
-		Table tallyBill_fromCTNR_table = tEnv.sqlQuery("select * from tallyBill_fromCTNR");
-		tEnv.toAppendStream(tallyBill_fromCTNR_table, Row.class).print();
+//		Table tallyBill_fromCTNR_table = tEnv.sqlQuery("select * from tallyBill_fromCTNR");
+//		tEnv.toAppendStream(tallyBill_fromCTNR_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 理货(散货)
@@ -551,7 +552,7 @@ public class mt5102 {
 		
 		Table tallyBill_table = tEnv.sqlQuery("select * from tallyBill");
 		tEnv.toAppendStream(tallyBill_table, Row.class).print();
-		env.execute();
+//		env.execute();
 		
 		StatementSet statementSet = tEnv.createStatementSet();
 		

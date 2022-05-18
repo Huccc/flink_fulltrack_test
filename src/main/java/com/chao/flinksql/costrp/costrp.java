@@ -45,7 +45,7 @@ public class costrp {
         tEnv.createTemporarySystemFunction("parseCOSTRP", JsonArrayToRowInCOSTRP.class);
 
         tEnv.executeSql("create view parseTB as\n" +
-                "  select msgId,LASTUPDATEDDT,parseCOSTRP(concat('{\"message\":',parseData,'}')).message as pData\n" +
+                "  select msgId,LASTUPDATEDDT,parseCOSTRP(concat('{\"message\":',parseData,'}')).message as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
                 "  from kafka_source_data\n" +
                 "  where bizId='COSTRP' and msgType='message_data'");
 
@@ -54,7 +54,7 @@ public class costrp {
 //        env.execute();
 
         tEnv.executeSql("create view originalTB as\n" +
-                "  select msgId,HeadRecord,Memo,TailRecord,LASTUPDATEDDT\n" +
+                "  select msgId,GID,HeadRecord,Memo,TailRecord,LASTUPDATEDDT\n" +
                 "  from (select * from parseTB where pData is not null) as tempTB1 cross join unnest(pData) AS pData(HeadRecord,Memo,TailRecord)");
 
 //        Table originalTB_table = tEnv.sqlQuery("select * from originalTB");
@@ -63,7 +63,7 @@ public class costrp {
 
         tEnv.executeSql("" +
                 "create view commonTB as\n" +
-                "select msgId,VslVoyFields,ContainerInformation,FileFunction,Memo,TailRecord,LASTUPDATEDDT\n" +
+                "select msgId,GID,VslVoyFields,ContainerInformation,FileFunction,Memo,TailRecord,LASTUPDATEDDT\n" +
                 "from (select * from originalTB where HeadRecord is not null) as tempTB2 cross join unnest(HeadRecord) AS HeadRecord(RecordId,MessageType,FileDescription,FileFunction,EdiCodeOfSender,EdiCodeOfRecipient,FileCreateTime,CopTo,VslVoyFields,TotalOfContainer,ContainerInformation)");
 
 //        Table commonTB_table = tEnv.sqlQuery("select * from commonTB");
@@ -116,7 +116,7 @@ public class costrp {
         // TODO 获取公共字段
         tEnv.executeSql("" +
                 "create view costrpCommon as\n" +
-                "  select msgId,\n" +
+                "  select msgId,GID,\n" +
                 "         if(VslVoyFields.VesselImoNo <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(VslVoyFields.VesselImoNo, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') as VSL_IMO_NO, --imo\n" +
                 "         if(VslVoyFields.VesselName <> '', UPPER(TRIM(REGEXP_REPLACE(VslVoyFields.VesselName, '[\\t\\n\\r]', ''))), 'N/A') as VSL_NAME, --船名\n" +
                 "         if(VslVoyFields.Voyage <> '', UPPER(TRIM(REGEXP_REPLACE(VslVoyFields.Voyage, '[\\t\\n\\r]', ''))), 'N/A') as VOYAGE, --航次\n" +
@@ -158,7 +158,7 @@ public class costrp {
         tEnv.executeSql("" +
                 "create view ctnrTB as\n" +
                 "  select\n" +
-                "  msgId,VSL_IMO_NO,VSL_NAME,VOYAGE,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,\n" +
+                "  msgId,GID,VSL_IMO_NO,VSL_NAME,VOYAGE,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,\n" +
                 "  BIZ_STATUS_CODE,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,ACCURATE_IMONO,\n" +
                 "  ACCURATE_VSLNAME,BIZ_STAGE_NAME,BIZ_STATUS,\n" +
                 "  if(ContainerNo <> '', UPPER(TRIM(REGEXP_REPLACE(ContainerNo, '[\\t\\n\\r]', ''))), 'N/A') as CTNR_NO, --箱号\n" +
@@ -175,7 +175,7 @@ public class costrp {
         // TODO 结果提单表   关联箱单关系表获取提单号
         tEnv.executeSql("" +
                 "create view billTB as\n" +
-                "  select ctnrTB.msgId,\n" +
+                "  select ctnrTB.msgId,ctnrTB.GID,\n" +
                 "         ctnrTB.VSL_IMO_NO,ctnrTB.VSL_NAME,ctnrTB.VOYAGE,ctnrTB.ACCURATE_IMONO,ctnrTB.ACCURATE_VSLNAME,\n" +
                 "         obcd.BL_NO,obcd.MASTER_BL_NO,ctnrTB.I_E_MARK,ctnrTB.BIZ_STAGE_NO,ctnrTB.BIZ_STAGE_CODE,\n" +
                 "         ctnrTB.BIZ_STAGE_NAME,ctnrTB.BIZ_TIME,ctnrTB.BIZ_STATUS_CODE,ctnrTB.BIZ_STATUS,\n" +
@@ -339,13 +339,14 @@ public class costrp {
                 "      BIZ_STATUS_DESC STRING,\n" +
                 "      LASTUPDATEDDT TIMESTAMP(3),\n" +
                 "      ISDELETED int,\n" +
+                "      UUID STRING,\n" +
                 "      BIZ_STATUS_IFFECTIVE int\n" +
                 ")\n" +
                 ") with (\n" +
                 "  'connector' = 'kafka',\n" +
-                "  'topic' = 'sink_topic',\n" +
+                "  'topic' = 'COSTRP_TEST_BILL',\n" +
                 "  'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
-                "  'properties.group.id' = 'sink_topic',\n" +
+                "  'properties.group.id' = 'COSTRP_TEST_BILL',\n" +
                 "  'format' = 'json'\n" +
                 "  )");
 
@@ -405,13 +406,14 @@ public class costrp {
                 "      BIZ_STATUS_DESC STRING,\n" +
                 "      LASTUPDATEDDT TIMESTAMP(3),\n" +
                 "      ISDELETED int,\n" +
+                "      UUID STRING,\n" +
                 "      BIZ_STATUS_IFFECTIVE int\n" +
                 ")\n" +
                 ") with (\n" +
                 "  'connector' = 'kafka',\n" +
-                "  'topic' = 'sink_topic',\n" +
+                "  'topic' = 'COSTRP_TEST_CTNR',\n" +
                 "  'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
-                "  'properties.group.id' = 'sink_topic',\n" +
+                "  'properties.group.id' = 'COSTRP_TEST_CTNR',\n" +
                 "  'format' = 'json'\n" +
                 "  )");
 
@@ -456,15 +458,15 @@ public class costrp {
         statementSet.addInsertSql("" +
                 "insert into kafka_ctn\n" +
                 "  select\n" +
-                "  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_COSTRP' as APP_NAME,\n" +
+                "  GID,'DATA_FLINK_FULL_FLINK_TRACING_COSTRP' as APP_NAME,\n" +
                 "  'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-                "  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+                "  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
                 "  from\n" +
                 "  (select\n" +
-                "  ctnrTB.UUID,ctnrTB.VSL_IMO_NO,ctnrTB.VSL_NAME,ctnrTB.VOYAGE,ctnrTB.ACCURATE_IMONO,ctnrTB.ACCURATE_VSLNAME,\n" +
+                "  ctnrTB.GID,ctnrTB.VSL_IMO_NO,ctnrTB.VSL_NAME,ctnrTB.VOYAGE,ctnrTB.ACCURATE_IMONO,ctnrTB.ACCURATE_VSLNAME,\n" +
                 "  ctnrTB.CTNR_NO,ctnrTB.I_E_MARK,ctnrTB.BIZ_STAGE_NO,ctnrTB.BIZ_STAGE_CODE,ctnrTB.BIZ_STAGE_NAME,\n" +
                 "  ctnrTB.BIZ_TIME,ctnrTB.BIZ_STATUS_CODE,ctnrTB.BIZ_STATUS,ctnrTB.BIZ_STATUS_DESC,\n" +
-                "  cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,ctnrTB.ISDELETED,ctnrTB.BIZ_STATUS_IFFECTIVE\n" +
+                "  cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,ctnrTB.ISDELETED,ctnrTB.UUID,ctnrTB.BIZ_STATUS_IFFECTIVE\n" +
                 "  from ctnrTB left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF ctnrTB.LASTUPDATEDDT as ospd1\n" +
                 "  on 'DATA_FLINK_FULL_FLINK_TRACING_COSTRP'=ospd1.APP_NAME\n" +
                 "  and 'DM.TRACK_BIZ_STATUS_CTNR'=ospd1.TABLE_NAME\n" +
@@ -474,14 +476,14 @@ public class costrp {
         statementSet.addInsertSql("" +
                 "insert into kafka_bill\n" +
                 "  select\n" +
-                "  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_COSTRP' as APP_NAME,\n" +
+                "  GID,'DATA_FLINK_FULL_FLINK_TRACING_COSTRP' as APP_NAME,\n" +
                 "  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-                "  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+                "  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
                 "  from\n" +
                 "  (select\n" +
-                "  billTB.UUID,billTB.VSL_IMO_NO,billTB.VSL_NAME,billTB.VOYAGE,billTB.ACCURATE_IMONO,billTB.ACCURATE_VSLNAME,\n" +
+                "  billTB.GID,billTB.VSL_IMO_NO,billTB.VSL_NAME,billTB.VOYAGE,billTB.ACCURATE_IMONO,billTB.ACCURATE_VSLNAME,\n" +
                 "  billTB.BL_NO,billTB.MASTER_BL_NO,billTB.I_E_MARK,billTB.BIZ_STAGE_NO,billTB.BIZ_STAGE_CODE,billTB.BIZ_STAGE_NAME,\n" +
-                "  billTB.BIZ_TIME,billTB.BIZ_STATUS_CODE,billTB.BIZ_STATUS,billTB.BIZ_STATUS_DESC,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,billTB.ISDELETED,billTB.BIZ_STATUS_IFFECTIVE\n" +
+                "  billTB.BIZ_TIME,billTB.BIZ_STATUS_CODE,billTB.BIZ_STATUS,billTB.BIZ_STATUS_DESC,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,billTB.ISDELETED,billTB.UUID,billTB.BIZ_STATUS_IFFECTIVE\n" +
                 "  from billTB left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF billTB.LASTUPDATEDDT as ospd2\n" +
                 "  on 'DATA_FLINK_FULL_FLINK_TRACING_COSTRP'=ospd2.APP_NAME\n" +
                 "  and 'DM.TRACK_BIZ_STATUS_BILL'=ospd2.TABLE_NAME\n" +

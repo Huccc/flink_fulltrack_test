@@ -138,7 +138,7 @@ public class elc300 {
 		
 		Table withDIMTB_table = tEnv.sqlQuery("select * from withDIMTB");
 		tEnv.toAppendStream(withDIMTB_table, Row.class).print();
-//		env.execute();
+		env.execute();
 		
 		// TODO Oracle sink表，提单表
 		tEnv.executeSql("" +

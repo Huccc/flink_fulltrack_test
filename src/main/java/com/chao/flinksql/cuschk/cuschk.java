@@ -160,6 +160,7 @@ public class cuschk {
                 "  TABLE_NAME STRING,\n" +
                 "  SUBSCRIBE_TYPE STRING, --  R: 补发，I: 实时推送\n" +
                 "  DATA ROW(\n" +
+                "    UUID STRING,\n" +
                 "    BL_NO STRING,\n" +
                 "    MASTER_BL_NO STRING,\n" +
                 "    VSL_IMO_NO STRING,\n" +
@@ -181,9 +182,9 @@ public class cuschk {
                 "  )\n" +
                 ") WITH (\n" +
                 " 'connector' = 'kafka',\n" +
-                " 'topic' = 'data-bdp-push',\n" +
+                " 'topic' = 'cuschk_bill_test',\n" +
                 " 'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
-                " 'properties.group.id' = 'data-bdp-push',\n" +
+                " 'properties.group.id' = 'cuschk_bill_test',\n" +
                 " 'format' = 'json'\n" +
                 ")\n");
 
@@ -264,6 +265,7 @@ public class cuschk {
                 "  TABLE_NAME STRING,\n" +
                 "  SUBSCRIBE_TYPE STRING, --  R: 补发，I: 实时推送\n" +
                 "  DATA ROW(\n" +
+                "    UUID STRING,\n" +
                 "    CTNR_NO STRING,\n" +
                 "    VSL_IMO_NO STRING,\n" +
                 "    VSL_NAME STRING,\n" +
@@ -284,9 +286,9 @@ public class cuschk {
                 "  )\n" +
                 ") WITH (\n" +
                 " 'connector' = 'kafka',\n" +
-                " 'topic' = 'data-bdp-push',\n" +
+                " 'topic' = 'cuschk_ctnr_test',\n" +
                 " 'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
-                " 'properties.group.id' = 'data-bdp-push',\n" +
+                " 'properties.group.id' = 'cuschk_ctnr_test',\n" +
                 " 'format' = 'json'\n" +
                 ")\n");
 
@@ -306,17 +308,17 @@ public class cuschk {
         tEnv.executeSql("" +
                 "CREATE VIEW TMP_BILL_INFO (\n" +
                 "  `map`,\n" +
-                "  `proctime`\n" +
+                "  `proctime`,GID\n" +
                 ") AS\n" +
                 "SELECT\n" +
-                "  STR_TO_MAP(regexp_replace(regexp_replace(regexp_replace(parseData, '\"', ''), '\\{', ''), '\\}', ''), ',', ':') AS `map`, --JSON_TO_MAP(parseData)\n" +
-                "  `proctime`\n" +
+                "  STR_TO_MAP(regexp_replace(regexp_replace(regexp_replace(parseData, '\"', ''), '\\{', ''), '\\}', ''), ',', ':') AS `map`,\n" +
+                "  `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
                 "FROM KAFKA_DATA_XPQ_DB_PARSE_RESULT\n" +
                 "WHERE bizId = 'ogg_data' AND destination = 'SRC_XIB3.EDI_CUSCHK_BILLINFO'\n");
 
 //        System.out.println("TMP_BILL_INFO");
-        Table TMP_BILL_INFO_table = tEnv.sqlQuery("select * from TMP_BILL_INFO");
-        tEnv.toAppendStream(TMP_BILL_INFO_table, Row.class).print();
+//        Table TMP_BILL_INFO_table = tEnv.sqlQuery("select * from TMP_BILL_INFO");
+//        tEnv.toAppendStream(TMP_BILL_INFO_table, Row.class).print();
 //        env.execute();
 
         tEnv.executeSql("" +
@@ -342,7 +344,7 @@ public class cuschk {
                 "  MSG2DB_TIME,\n" +
                 "  CAPXTIMESTAMP,\n" +
                 "  CHECKID,\n" +
-                "  `proctime`\n" +
+                "  `proctime`,GID\n" +
                 ") AS\n" +
                 "SELECT\n" +
                 "  `map`['MSGLOGID'],\n" +
@@ -367,7 +369,7 @@ public class cuschk {
                 "  `map`['MSG2DB_TIME'],\n" +
                 "  `map`['CAPXTIMESTAMP'],\n" +
                 "  `map`['CHECKID'],\n" +
-                "  `proctime`\n" +
+                "  `proctime`,GID\n" +
                 "FROM TMP_BILL_INFO\n" +
                 "WHERE `map`['OP_TYPE'] = 'I'\n");
 
@@ -377,7 +379,7 @@ public class cuschk {
 
         tEnv.executeSql("" +
                 "CREATE VIEW BILL ( \n" +
-                "                  UUID, \n" +
+                "                  UUID,GID, \n" +
                 "                  MSGLOGID, -- 用于和 “箱” 关联 \n" +
                 "                  BL_NO, \n" +
                 "                  MASTER_BL_NO, \n" +
@@ -400,7 +402,7 @@ public class cuschk {
                 "                  `proctime` \n" +
                 "                ) AS \n" +
                 "                SELECT \n" +
-                "                  uuid() AS UUID, \n" +
+                "                  uuid() AS UUID,GID, \n" +
                 "                  MSGLOGID, \n" +
                 "                  IF(BLNO <> '', TRIM(REGEXP_REPLACE(BLNO, '[\\t\\n\\r]', '')), 'N/A') AS BL_NO,\n" +
                 "                  'N/A' AS MASTER_BL_NO, \n" +
@@ -437,24 +439,24 @@ public class cuschk {
                 "                    ON dim_common_mini.key = CONCAT('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=cus_check_result&TYPE_CODE=', IF(BI.FREEFLAG <> '' , BI.FREEFLAG, 'C')) \n" +
                 "                    AND dim_common_mini.field = 'TYPE_NAME'");
 
-        Table bill_table = tEnv.sqlQuery("select * from BILL");
-        tEnv.toAppendStream(bill_table, Row.class).print();
-        env.execute();
+//        Table bill_table = tEnv.sqlQuery("select * from BILL");
+//        tEnv.toAppendStream(bill_table, Row.class).print();
+//        env.execute();
 
         // TODO 箱表
         tEnv.executeSql("" +
                 "CREATE VIEW TMP_CTNR_INFO (\n" +
                 "  `map`,\n" +
-                "  `proctime`\n" +
+                "  `proctime`,GID\n" +
                 ") AS\n" +
                 "SELECT\n" +
                 "  STR_TO_MAP(regexp_replace(regexp_replace(regexp_replace(parseData, '\"', ''), '\\{', ''), '\\}', ''), ',', ':') AS `map`,\n" +
-                "  `proctime`\n" +
+                "  `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
                 "FROM KAFKA_DATA_XPQ_DB_PARSE_RESULT\n" +
                 "WHERE bizId = 'ogg_data' AND destination = 'SRC_XIB3.EDI_CUSCHK_CTNINFO'\n");
 
-        Table table = tEnv.sqlQuery("select * from TMP_CTNR_INFO");
-        tEnv.toAppendStream(table, Row.class).print();
+//        Table table = tEnv.sqlQuery("select * from TMP_CTNR_INFO");
+//        tEnv.toAppendStream(table, Row.class).print();
 //        env.execute();
 
         tEnv.executeSql("" +
@@ -464,7 +466,7 @@ public class cuschk {
                 "  CTNNO,\n" +
                 "  CAPXTIMESTAMP,\n" +
                 "  CHECKTYPE,\n" +
-                "  `proctime`\n" +
+                "  `proctime`,GID\n" +
                 ") AS\n" +
                 "SELECT\n" +
                 "  `map`['ID'],\n" +
@@ -472,7 +474,7 @@ public class cuschk {
                 "  `map`['CTNNO'],\n" +
                 "  `map`['CAPXTIMESTAMP'],\n" +
                 "  `map`['CHECKTYPE'],\n" +
-                "  `proctime`\n" +
+                "  `proctime`,GID\n" +
                 "FROM TMP_CTNR_INFO\n");
 
         Table table3 = tEnv.sqlQuery("select * from CTNR_INFO");
@@ -481,7 +483,7 @@ public class cuschk {
 
         tEnv.executeSql("" +
                 "CREATE VIEW CTNR (\n" +
-                "  UUID,\n" +
+                "  UUID,GID,\n" +
                 "  CTNR_NO,\n" +
                 "  VSL_IMO_NO,\n" +
                 "  VSL_NAME,\n" +
@@ -502,7 +504,7 @@ public class cuschk {
                 "  `proctime`\n" +
                 ") AS\n" +
                 "SELECT\n" +
-                "  B.UUID,\n" +
+                "  B.UUID,concat(CI.GID,',',B.GID) as GID,\n" +
                 "  CI.CTNNO,\n" +
                 "  IF(B.VSL_IMO_NO <> '', B.VSL_IMO_NO, 'N/A'),\n" +
                 "  IF(B.VSL_NAME <> '', B.VSL_NAME, 'N/A'),\n" +
@@ -526,7 +528,7 @@ public class cuschk {
 
         Table ctnr_table = tEnv.sqlQuery("select * from CTNR");
         tEnv.toAppendStream(ctnr_table, Row.class).print();
-//        env.execute();
+        env.execute();
 
         StatementSet statementSet = tEnv.createStatementSet();
         // TODO 提单状态表写入到oracle
@@ -596,14 +598,15 @@ public class cuschk {
                 "  APP_NAME,\n" +
                 "  TABLE_NAME,\n" +
                 "  SUBSCRIBE_TYPE,\n" +
-                "  ROW(BL_NO, MASTER_BL_NO, VSL_IMO_NO, VSL_NAME, VOYAGE, ACCURATE_IMONO, ACCURATE_VSLNAME, I_E_MARK, BIZ_STAGE_NO,\n" +
+                "  ROW(UUID, BL_NO, MASTER_BL_NO, VSL_IMO_NO, VSL_NAME, VOYAGE, ACCURATE_IMONO, ACCURATE_VSLNAME, I_E_MARK, BIZ_STAGE_NO,\n" +
                 "    BIZ_STAGE_CODE, BIZ_STAGE_NAME, BIZ_TIME, BIZ_STATUS_CODE, BIZ_STATUS, BIZ_STATUS_IFFECTIVE, BIZ_STATUS_DESC, LASTUPDATEDDT, ISDELETED) AS DATA\n" +
                 "FROM (\n" +
                 "  SELECT\n" +
-                "    b.UUID AS GID,\n" +
+                "    b.GID AS GID,\n" +
                 "    p.APP_NAME AS APP_NAME,\n" +
                 "    p.TABLE_NAME AS TABLE_NAME,\n" +
                 "    p.SUBSCRIBE_TYPE AS SUBSCRIBE_TYPE,\n" +
+                "    b.UUID AS UUID,\n" +
                 "    b.BL_NO AS BL_NO,\n" +
                 "    b.MASTER_BL_NO AS MASTER_BL_NO,\n" +
                 "    b.VSL_IMO_NO AS VSL_IMO_NO,\n" +
@@ -691,14 +694,15 @@ public class cuschk {
                 "  APP_NAME,\n" +
                 "  TABLE_NAME,\n" +
                 "  SUBSCRIBE_TYPE,\n" +
-                "  ROW(CTNR_NO, VSL_IMO_NO, VSL_NAME, VOYAGE, ACCURATE_IMONO, ACCURATE_VSLNAME, I_E_MARK, BIZ_STAGE_NO, BIZ_STAGE_CODE,\n" +
+                "  ROW(UUID, CTNR_NO, VSL_IMO_NO, VSL_NAME, VOYAGE, ACCURATE_IMONO, ACCURATE_VSLNAME, I_E_MARK, BIZ_STAGE_NO, BIZ_STAGE_CODE,\n" +
                 "    BIZ_STAGE_NAME, BIZ_TIME, BIZ_STATUS_CODE, BIZ_STATUS, BIZ_STATUS_IFFECTIVE,BIZ_STATUS_DESC, LASTUPDATEDDT, ISDELETED) AS DATA -- 此时的 LASTUPDATEDDT 没有  '.'\n" +
                 "FROM (\n" +
                 "  SELECT\n" +
-                "    c.UUID AS GID,\n" +
+                "    c.GID AS GID,\n" +
                 "    p.APP_NAME AS APP_NAME,\n" +
                 "    p.TABLE_NAME AS TABLE_NAME,\n" +
                 "    p.SUBSCRIBE_TYPE AS SUBSCRIBE_TYPE,\n" +
+                "    c.UUID AS UUID,\n" +
                 "    c.CTNR_NO AS CTNR_NO,\n" +
                 "    c.VSL_IMO_NO AS VSL_IMO_NO,\n" +
                 "    c.VSL_NAME AS VSL_NAME,\n" +

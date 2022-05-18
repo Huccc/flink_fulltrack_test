@@ -113,7 +113,7 @@ public class mt5102_test_mt5102 {
 				"            \"JourneyID\": \"MT5102001\",\n" +
 				"            \"TypeCode\": \"1\",\n" +
 //				"            \"CompletedDateTime\": \"202203101201271\",\n" +
-				"            \"CompletedDateTime\": \"20220511120127\",\n" +
+				"            \"CompletedDateTime\": \"20220511120129\",\n" +
 				"            \"LoadingLocation\": {\n" +
 				"                \"ID\": \"00027/2202\"\n" +
 				"            },\n" +
@@ -189,7 +189,7 @@ public class mt5102_test_mt5102 {
 				"select '1359023762372042843' as msgId," +
 				"'MT5102' as bizId," +
 				"'message_data' as msgType," +
-				"'null' as bizUniqueId," +
+				"'MT5102_TEST' as bizUniqueId," +
 				"'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
 				"'" + msg2 + "'" + "as parseData");
 

@@ -32,7 +32,7 @@ public class costrp_test {
                 "select '1359023762372042843' as msgId," +
                 "'COSTRP' as bizId," +
                 "'message_data' as msgType," +
-                "'null' as bizUniqueId," +
+                "'COSTRP_TEST' as bizUniqueId," +
                 "'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
                 "'[{\n" +
                 "        \"HeadRecord\":[\n" +

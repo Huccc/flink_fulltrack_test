@@ -61,14 +61,14 @@ public class costco {
                 "    BIZ_STATUS_DESC STRING,\n" +
                 "    LASTUPDATEDDT TIMESTAMP(3),\n" +
                 "    ISDELETED int,\n" +
-//                "    UUID STRING,\n" +
+                "    UUID STRING,\n" +
                 "    BIZ_STATUS_IFFECTIVE int\n" +
                 "  )\n" +
                 ") with (\n" +
                 "  'connector' = 'kafka',\n" +
-                "  'topic' = 'spe_data_sink',\n" +
+                "  'topic' = 'COSTCO_TEST_CTNR',\n" +
                 "  'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
-                "  'properties.group.id' = 'spe_data_sink',\n" +
+                "  'properties.group.id' = 'COSTCO_TEST_CTNR',\n" +
                 "  'format' = 'json'\n" +
                 ")");
 
@@ -97,14 +97,14 @@ public class costco {
                 "    BIZ_STATUS_DESC STRING,\n" +
                 "    LASTUPDATEDDT TIMESTAMP(3),\n" +
                 "    ISDELETED int,\n" +
-//                "    UUID STRING,\n" +
+                "    UUID STRING,\n" +
                 "    BIZ_STATUS_IFFECTIVE int\n" +
                 "  )\n" +
                 ") with (\n" +
                 "  'connector' = 'kafka',\n" +
-                "  'topic' = 'spe_data_sink',\n" +
+                "  'topic' = 'COSTCO_TEST_BILL',\n" +
                 "  'properties.bootstrap.servers' = '192.168.129.122:9092,192.168.129.123:9092,192.168.129.124:9092',\n" +
-                "  'properties.group.id' = 'spe_data_sink',\n" +
+                "  'properties.group.id' = 'COSTCO_TEST_BILL',\n" +
                 "  'format' = 'json'\n" +
                 ")");
 
@@ -226,7 +226,7 @@ public class costco {
                 "create view costcoTB as\n" +
                 "select  msgId,\n" +
                 "        JSON_TO_ROW_IN_COSTCO('{\"Msg\":' || parseData || '}') as pData,\n" +
-                "        `proctime`\n" +
+                "        `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
                 "from kafka_source_data\n" +
                 "WHERE msgType = 'message_data' AND bizId = 'COSTCO'");
 
@@ -238,7 +238,7 @@ public class costco {
         tEnv.executeSql("" +
                 "create view costcoCtn as\n" +
                 "select\n" +
-                "    msgId AS MSGID,\n" +
+                "    msgId AS MSGID,GID,\n" +
                 "    `proctime`,\n" +
                 "    if(Ctn.DateOfPacking <> '',\n" +
                 "        TO_TIMESTAMP(substr(Ctn.DateOfPacking,0,12) || '00.0', 'yyyyMMddHHmmss.S'),\n" +
@@ -295,6 +295,7 @@ public class costco {
                 "(\n" +
                 "    select\n" +
                 "        costcoCtn.MSGID AS MSGID,\n" +
+                "        costcoCtn.GID AS GID,\n" +
                 "        costcoCtn.VesselImoNo as VSL_IMO_NO, --船舶IMO\n" +
                 "        costcoCtn.VesselName as VSL_NAME, --船名\n" +
                 "        costcoCtn.Voyage as VOYAGE, --航次\n" +
@@ -320,8 +321,8 @@ public class costco {
                 "left join redis_dim FOR SYSTEM_TIME AS OF temp4.`proctime` as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=',temp4.BIZ_STAGE_NO,'&SUB_STAGE_CODE=',temp4.BIZ_STAGE_CODE) = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
                 "left join redis_dim FOR SYSTEM_TIME AS OF temp4.`proctime` as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=load_status&TYPE_CODE=',temp4.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 
-        Table packing_costco_ctn_table = tEnv.sqlQuery("select * from packing_costco_ctn");
-        tEnv.toAppendStream(packing_costco_ctn_table, Row.class).print();
+//        Table packing_costco_ctn_table = tEnv.sqlQuery("select * from packing_costco_ctn");
+//        tEnv.toAppendStream(packing_costco_ctn_table, Row.class).print();
 //        env.execute();
 
         // TODO 装箱(提单)
@@ -329,6 +330,7 @@ public class costco {
                 "create view packing_costco_bill as\n" +
                 "select\n" +
                 "    MSGID,\n" +
+                "    GID,\n" +
                 "    VSL_IMO_NO, --船舶IMO\n" +
                 "    VSL_NAME, --船名\n" +
                 "    VOYAGE, --航次\n" +
@@ -466,7 +468,7 @@ public class costco {
                 "                                         TABLE_NAME,\n" +
                 "                                         SUBSCRIBE_TYPE,\n" +
                 "                                         DATA)\n" +
-                "   SELECT UUID AS GID,\n" +
+                "   SELECT GID,\n" +
                 "          'DATA_FLINK_FULL_FLINK_TRACING_COSTCO' AS APP_NAME,\n" +
                 "          'DM.TRACK_BIZ_STATUS_BILL' AS TABLE_NAME,\n" +
                 "          'I' AS SUBSCRIBE_TYPE,\n" +
@@ -487,9 +489,10 @@ public class costco {
                 "               BIZ_STATUS_DESC,\n" +
                 "               LASTUPDATEDDT,\n" +
                 "               ISDELETED,\n" +
+                "               UUID,\n" +
                 "               BIZ_STATUS_IFFECTIVE)\n" +
                 "             AS DATA\n" +
-                "     FROM (SELECT M.UUID,\n" +
+                "     FROM (SELECT M.GID,\n" +
                 "                  M.VSL_IMO_NO,\n" +
                 "                  M.VSL_NAME,\n" +
                 "                  M.VOYAGE,\n" +
@@ -507,6 +510,7 @@ public class costco {
                 "                  M.BIZ_STATUS_DESC,\n" +
                 "                  M.LASTUPDATEDDT,\n" +
                 "                  M.ISDELETED,\n" +
+                "                  M.UUID,\n" +
                 "                  M.BIZ_STATUS_IFFECTIVE\n" +
                 "             FROM packing_costco_bill AS M\n" +
                 "            LEFT JOIN oracle_subscribe_papam_dim FOR SYSTEM_TIME AS OF M.`proctime` AS P\n" +
@@ -521,7 +525,7 @@ public class costco {
                 "                                         TABLE_NAME,\n" +
                 "                                         SUBSCRIBE_TYPE,\n" +
                 "                                         DATA)\n" +
-                "   SELECT UUID AS GID,\n" +
+                "   SELECT GID,\n" +
                 "          'DATA_FLINK_FULL_FLINK_TRACING_COSTCO' AS APP_NAME,\n" +
                 "          'DM.TRACK_BIZ_STATUS_CTNR' AS TABLE_NAME,\n" +
                 "          'I' AS SUBSCRIBE_TYPE,\n" +
@@ -541,9 +545,10 @@ public class costco {
                 "               BIZ_STATUS_DESC,\n" +
                 "               LASTUPDATEDDT,\n" +
                 "               ISDELETED,\n" +
+                "               UUID,\n" +
                 "               BIZ_STATUS_IFFECTIVE)\n" +
                 "             AS DATA\n" +
-                "     FROM (SELECT M.UUID,\n" +
+                "     FROM (SELECT M.GID,\n" +
                 "                  M.VSL_IMO_NO,\n" +
                 "                  M.VSL_NAME,\n" +
                 "                  M.VOYAGE,\n" +
@@ -560,6 +565,7 @@ public class costco {
                 "                  M.BIZ_STATUS_DESC,\n" +
                 "                  M.LASTUPDATEDDT,\n" +
                 "                  M.ISDELETED,\n" +
+                "                  M.UUID,\n" +
                 "                  M.BIZ_STATUS_IFFECTIVE\n" +
                 "             FROM packing_costco_ctn AS M\n" +
                 "            LEFT JOIN oracle_subscribe_papam_dim FOR SYSTEM_TIME AS OF M.`proctime` AS P\n" +

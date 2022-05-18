@@ -184,11 +184,12 @@ public class iftvgm {
 				"      BIZ_STATUS_DESC STRING,\n" +
 				"      LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"      ISDELETED int,\n" +
+				"      UUID STRING,\n" +
 				"      BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'IFTVGM',\n" +
+				"  'topic' = 'IFTVGM_BILL_TEST',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
 				"  'properties.group.id' = 'IFTVGM',\n" +
 				"  'format' = 'json'\n" +
@@ -250,11 +251,12 @@ public class iftvgm {
 				"      BIZ_STATUS_DESC STRING,\n" +
 				"      LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"      ISDELETED int,\n" +
+				"      UUID STRING,\n" +
 				"      BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'IFTVGM',\n" +
+				"  'topic' = 'IFTVGM_CTNR_TEST',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
 				"  'properties.group.id' = 'IFTVGM',\n" +
 				"  'format' = 'json'\n" +
@@ -280,7 +282,7 @@ public class iftvgm {
 		// TODO 解析
 		tEnv.executeSql("" +
 				"create view sourceTB as\n" +
-				"  select msgId, parseIFTVGM(concat('{\"message\":',parseData,'}')).message as pData, LASTUPDATEDDT\n" +
+				"  select msgId, parseIFTVGM(concat('{\"message\":',parseData,'}')).message as pData, LASTUPDATEDDT,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"  from kafka_source_data where bizId='IFTVGM' and msgType='message_data'");
 
 //		Table sourceTB_table = tEnv.sqlQuery("select * from sourceTB");
@@ -291,7 +293,7 @@ public class iftvgm {
 		tEnv.executeSql("" +
 				"create view commonTB as\n" +
 				"  select\n" +
-				"  msgId,LASTUPDATEDDT,\n" +
+				"  msgId,GID,LASTUPDATEDDT,\n" +
 				"  if(VesselVoyageInformation.VslName <> '', UPPER(TRIM(REGEXP_REPLACE(VesselVoyageInformation.VslName, '[\\t\\n\\r]', ''))), 'N/A') as VSL_NAME,\n" +
 				"  if(VesselVoyageInformation.Voyage <> '', UPPER(TRIM(REGEXP_REPLACE(VesselVoyageInformation.Voyage, '[\\t\\n\\r]', ''))), 'N/A') as VOYAGE,\n" +
 				"  ContainerDetail, --箱\n" +
@@ -306,7 +308,7 @@ public class iftvgm {
 		tEnv.executeSql("" +
 				"create view withCTNR as\n" +
 				"  select\n" +
-				"  msgId,VSL_NAME,VOYAGE,\n" +
+				"  msgId,GID,VSL_NAME,VOYAGE,\n" +
 				"  if(CtnrNo <> '', UPPER(TRIM(REGEXP_REPLACE(CtnrNo, '[\\t\\n\\r]', ''))), 'N/A') as CTNR_NO,\n" +
 				"--   TO_TIMESTAMP(VgmTime, 'yyyyMMddHHmm') as BIZ_TIME,\n" +
 				"  if(VgmTime <> '',\n" +
@@ -323,7 +325,7 @@ public class iftvgm {
 		tEnv.executeSql("" +
 				"create view withCTNR_DIM as\n" +
 				"  select\n" +
-				"  msgId,\n" +
+				"  msgId,GID,\n" +
 				"  if(dim5.res <> '', dim5.res, 'N/A') as VSL_IMO_NO,\n" +
 				"  VSL_NAME,\n" +
 				"  VOYAGE,\n" +
@@ -384,7 +386,7 @@ public class iftvgm {
 		// TODO 关联箱单关系表获得提单号
 		tEnv.executeSql("" +
 				"create view billTB as\n" +
-				"  select msgId,\n" +
+				"  select msgId,GID,\n" +
 				"         withCTNR_DIM.VSL_IMO_NO,withCTNR_DIM.VSL_NAME,withCTNR_DIM.VOYAGE,withCTNR_DIM.ACCURATE_IMONO,\n" +
 				"         withCTNR_DIM.ACCURATE_VSLNAME,obcd.BL_NO,obcd.MASTER_BL_NO,withCTNR_DIM.I_E_MARK,\n" +
 				"         withCTNR_DIM.BIZ_STAGE_NO,withCTNR_DIM.BIZ_STAGE_CODE,withCTNR_DIM.BIZ_STAGE_NAME,\n" +
@@ -427,17 +429,17 @@ public class iftvgm {
 		statementSet.addInsertSql("" +
 				"insert into kafka_ctn\n" +
 				"  select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_VGM' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_VGM' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"  from\n" +
 				"  (select\n" +
-				"  withCTNR_DIM.UUID,withCTNR_DIM.VSL_IMO_NO,withCTNR_DIM.VSL_NAME,\n" +
+				"  withCTNR_DIM.GID,withCTNR_DIM.VSL_IMO_NO,withCTNR_DIM.VSL_NAME,\n" +
 				"  withCTNR_DIM.VOYAGE,withCTNR_DIM.ACCURATE_IMONO,withCTNR_DIM.ACCURATE_VSLNAME,\n" +
 				"  withCTNR_DIM.CTNR_NO,withCTNR_DIM.I_E_MARK,withCTNR_DIM.BIZ_STAGE_NO,\n" +
 				"  withCTNR_DIM.BIZ_STAGE_CODE,withCTNR_DIM.BIZ_STAGE_NAME,withCTNR_DIM.BIZ_TIME,\n" +
 				"  withCTNR_DIM.BIZ_STATUS_CODE,withCTNR_DIM.BIZ_STATUS,withCTNR_DIM.BIZ_STATUS_DESC,\n" +
-				"  withCTNR_DIM.LASTUPDATEDDT,withCTNR_DIM.ISDELETED,withCTNR_DIM.BIZ_STATUS_IFFECTIVE\n" +
+				"  withCTNR_DIM.LASTUPDATEDDT,withCTNR_DIM.ISDELETED,withCTNR_DIM.UUID,withCTNR_DIM.BIZ_STATUS_IFFECTIVE\n" +
 				"  from withCTNR_DIM left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF withCTNR_DIM.LASTUPDATEDDT as ospd1\n" +
 				"  on 'DATA_FLINK_FULL_FLINK_TRACING_VGM'=ospd1.APP_NAME\n" +
 				"  and 'DM.TRACK_BIZ_STATUS_CTNR'=ospd1.TABLE_NAME\n" +
@@ -464,14 +466,14 @@ public class iftvgm {
 		statementSet.addInsertSql("" +
 				"insert into kafka_bill\n" +
 				"  select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_VGM' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_VGM' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"  from\n" +
 				"  (select\n" +
-				"  billTB.UUID,billTB.VSL_IMO_NO,billTB.VSL_NAME,billTB.VOYAGE,billTB.ACCURATE_IMONO,billTB.ACCURATE_VSLNAME,\n" +
+				"  billTB.GID,billTB.VSL_IMO_NO,billTB.VSL_NAME,billTB.VOYAGE,billTB.ACCURATE_IMONO,billTB.ACCURATE_VSLNAME,\n" +
 				"  billTB.BL_NO,billTB.MASTER_BL_NO,billTB.I_E_MARK,billTB.BIZ_STAGE_NO,billTB.BIZ_STAGE_CODE,billTB.BIZ_STAGE_NAME,\n" +
-				"  billTB.BIZ_TIME,billTB.BIZ_STATUS_CODE,billTB.BIZ_STATUS,billTB.BIZ_STATUS_DESC,billTB.LASTUPDATEDDT,billTB.ISDELETED,billTB.BIZ_STATUS_IFFECTIVE\n" +
+				"  billTB.BIZ_TIME,billTB.BIZ_STATUS_CODE,billTB.BIZ_STATUS,billTB.BIZ_STATUS_DESC,billTB.LASTUPDATEDDT,billTB.ISDELETED,billTB.UUID,billTB.BIZ_STATUS_IFFECTIVE\n" +
 				"  from billTB left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF billTB.LASTUPDATEDDT as ospd2\n" +
 				"  on 'DATA_FLINK_FULL_FLINK_TRACING_VGM'=ospd2.APP_NAME\n" +
 				"  and 'DM.TRACK_BIZ_STATUS_BILL'=ospd2.TABLE_NAME\n" +

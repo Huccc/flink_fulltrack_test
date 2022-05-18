@@ -257,13 +257,14 @@ public class coarri_container {
 				"    BIZ_STATUS_DESC STRING,\n" +
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
+				"    UUID STRING,\n" +
 				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'topic-bdpevent-flink-push',\n" +
+				"  'topic' = 'COARRI_TEST_BILL',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
-				"  'properties.group.id' = 'topic-bdpevent-flink-push',\n" +
+				"  'properties.group.id' = 'COARRI_TEST_BILL',\n" +
 				"  'format' = 'json'\n" +
 				")");
 		
@@ -291,13 +292,14 @@ public class coarri_container {
 				"    BIZ_STATUS_DESC STRING,\n" +
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
+				"    UUID STRING,\n" +
 				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'topic-bdpevent-flink-push',\n" +
+				"  'topic' = 'COARRI_TEST_CTNR',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
-				"  'properties.group.id' = 'topic-bdpevent-flink-push',\n" +
+				"  'properties.group.id' = 'COARRI_TEST_CTNR',\n" +
 				"  'format' = 'json'\n" +
 				")");
 		
@@ -310,7 +312,7 @@ public class coarri_container {
 				"select\n" +
 				"  msgId,bizId,msgType,bizUniqueId,destination,\n" +
 				"  JSON_STR_TO_ROW_IN_COARRI(concat('{\"message\":',parseData,'}')).message as Pdata,\n" +
-				"  LASTUPDATEDDT\n" +
+				"  LASTUPDATEDDT,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"from kafka_source_data where bizId='COARRI' and msgType='message_data'");
 
 //		Table sourceview_table = tEnv.sqlQuery("select * from sourceview");
@@ -321,7 +323,7 @@ public class coarri_container {
 		tEnv.executeSql("" +
 				"create view sourceTB as\n" +
 				"select\n" +
-				"  msgId,bizId,msgType,bizUniqueId,destination,VesselVoyageInformation,HeadRecord,ContainerInformation,LASTUPDATEDDT\n" +
+				"  msgId,GID,bizId,msgType,bizUniqueId,destination,VesselVoyageInformation,HeadRecord,ContainerInformation,LASTUPDATEDDT\n" +
 				"from (select * from sourceview where Pdata is not null) as tempTB1\n" +
 				"cross join unnest(Pdata) AS Pdata(HeadRecord,VesselVoyageInformation,TallyCompanyInformation,ContainerInformation,DangerousGoods,RefrigeratedContainer,TailRecord)");
 
@@ -342,6 +344,7 @@ public class coarri_container {
 				"  (select\n" +
 				"    --提单和箱的公共字段\n" +
 				"    msgId,--用来推送到kafka\n" +
+				"    GID,\n" +
 				"    if(VesselVoyageInformation.VslName <> '', UPPER(TRIM(REGEXP_REPLACE(VesselVoyageInformation.VslName, '[\\t\\n\\r]', ''))), 'N/A') as VSL_NAME,\n" +
 				"    if(VesselVoyageInformation.Voyage <> '', UPPER(TRIM(REGEXP_REPLACE(VesselVoyageInformation.Voyage, '[\\t\\n\\r]', ''))), 'N/A') as VOYAGE,\n" +
 				"    'N/A' as MASTER_BL_NO,\n" +
@@ -367,7 +370,7 @@ public class coarri_container {
 		tEnv.executeSql("" +
 				"create view ctnrTB as\n" +
 				"select\n" +
-				"  msgId,--用来推送到kafka\n" +
+				"  msgId,GID,\n" +
 				"  VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,\n" +
 				"  if(CtnrNo <> '', UPPER(TRIM(REGEXP_REPLACE(CtnrNo, '[\\t\\n\\r]', ''))), 'N/A') as CTNR_NO,\n" +
 				"  I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,\n" +
@@ -378,15 +381,15 @@ public class coarri_container {
 				"from (select * from commnontb where ContainerInformation is not null) as temp2\n" +
 				"CROSS JOIN UNNEST(ContainerInformation) AS ContainerInformation(RecId,CtnrNo,CtnrSizeType,CtnrOprCode,CtnrOprName,CntrStatusCode,SealNo,BayNo,CargoNetWtInCtnr,PkgQtyInCtnr,CargoVolumeInCtnr,TeuQty,ActualLoadDchgTime,IntlTsMark,OverLengthFront,OverLengthBack,OverWidthRight,OverWidthLeft,OverHeight,LocationInformation,BillOfLadingInformation)");
 
-		Table ctnrTB_table = tEnv.sqlQuery("select * from ctnrTB");
-		tEnv.toAppendStream(ctnrTB_table, Row.class).print();
-		env.execute();
+//		Table ctnrTB_table = tEnv.sqlQuery("select * from ctnrTB");
+//		tEnv.toAppendStream(ctnrTB_table, Row.class).print();
+//		env.execute();
 		
 		// TODO 展开箱中的提单，获取提单号
 		tEnv.executeSql("" +
 				"create view billFromCtnr as\n" +
 				"select\n" +
-				"  UUID,--用来推送到kafka\n" +
+				"  UUID,GID,\n" +
 				"  BIZ_STATUS_IFFECTIVE,\n" +
 				"  VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,\n" +
 				"  if(BlNo <> '', UPPER(TRIM(REGEXP_REPLACE(BlNo, '[\\t\\n\\r]', ''))), 'N/A') as BL_NO,--提单号\n" +
@@ -396,15 +399,15 @@ public class coarri_container {
 				"from (select * from ctnrTB where BillOfLadingInformation is not null) as temp3\n" +
 				"CROSS JOIN UNNEST(BillOfLadingInformation) as BillOfLadingInformation(RecId,BlNo,LoadPortCode,DchgPortCode,TsMark,PkgQty,CargoGrossWt,GrossVolumn,CargoDesp)");
 
-//		Table billFromCtnr_table = tEnv.sqlQuery("select * from billFromCtnr");
-//		tEnv.toAppendStream(billFromCtnr_table, Row.class).print();
+		Table billFromCtnr_table = tEnv.sqlQuery("select * from billFromCtnr");
+		tEnv.toAppendStream(billFromCtnr_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 关联箱单关系表取分提单号
 		tEnv.executeSql("" +
 				"create view billwithblctnr as\n" +
 				"select\n" +
-				"  billFromCtnr.UUID,billFromCtnr.BIZ_STATUS_IFFECTIVE,billFromCtnr.VSL_IMO_NO,billFromCtnr.VSL_NAME,billFromCtnr.VOYAGE,billFromCtnr.ACCURATE_IMONO,billFromCtnr.ACCURATE_VSLNAME,\n" +
+				"  billFromCtnr.UUID,billFromCtnr.GID,billFromCtnr.BIZ_STATUS_IFFECTIVE,billFromCtnr.VSL_IMO_NO,billFromCtnr.VSL_NAME,billFromCtnr.VOYAGE,billFromCtnr.ACCURATE_IMONO,billFromCtnr.ACCURATE_VSLNAME,\n" +
 				"  obcd.BL_NO,obcd.MASTER_BL_NO,billFromCtnr.I_E_MARK,billFromCtnr.BIZ_STAGE_NO,billFromCtnr.BIZ_STAGE_CODE,\n" +
 				"  billFromCtnr.BIZ_STAGE_NAME,billFromCtnr.BIZ_TIME,billFromCtnr.BIZ_STATUS_CODE,billFromCtnr.BIZ_STATUS,\n" +
 				"  billFromCtnr.BIZ_STATUS_DESC,billFromCtnr.LASTUPDATEDDT,billFromCtnr.ISDELETED\n" +
@@ -417,7 +420,7 @@ public class coarri_container {
 
 		Table billwithblctnr_table = tEnv.sqlQuery("select * from billwithblctnr");
 		tEnv.toAppendStream(billwithblctnr_table,Row.class).print();
-		env.execute();
+//		env.execute();
 		
 		StatementSet statementSet = tEnv.createStatementSet();
 		
@@ -443,15 +446,15 @@ public class coarri_container {
 				"insert into kafka_ctn (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
 				"   GID, 'DATA_FLINK_FULL_FLINK_TRACING_COARRI' as APP_NAME, 'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"   ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"   ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
 				"  (select\n" +
-				"    ct1.UUID as GID,ct1.VSL_IMO_NO,ct1.VSL_NAME,ct1.VOYAGE,\n" +
+				"    ct1.GID as GID,ct1.VSL_IMO_NO,ct1.VSL_NAME,ct1.VOYAGE,\n" +
 				"    ct1.ACCURATE_IMONO,ct1.ACCURATE_VSLNAME,ct1.CTNR_NO,\n" +
 				"    ct1.I_E_MARK,ct1.BIZ_STAGE_NO,ct1.BIZ_STAGE_CODE,\n" +
 				"    ct1.BIZ_STAGE_NAME,ct1.BIZ_TIME,ct1.BIZ_STATUS_CODE,\n" +
 				"    ct1.BIZ_STATUS,ct1.BIZ_STATUS_DESC,\n" +
-				"    cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,ct1.ISDELETED,ct1.BIZ_STATUS_IFFECTIVE\n" +
+				"    cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,ct1.ISDELETED,ct1.UUID,ct1.BIZ_STATUS_IFFECTIVE\n" +
 				"  from ctnrTB as ct1 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF ct1.LASTUPDATEDDT as ospd\n" +
 				"    on 'DATA_FLINK_FULL_FLINK_TRACING_COARRI'=ospd.APP_NAME\n" +
 				"    AND 'DM.TRACK_BIZ_STATUS_CTNR'=ospd.TABLE_NAME\n" +
@@ -479,15 +482,15 @@ public class coarri_container {
 				"insert into kafka_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
 				"  GID, 'DATA_FLINK_FULL_FLINK_TRACING_COARRI' as APP_NAME, 'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  Row(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  Row(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
 				"  (select\n" +
-				"    bc1.UUID as GID,bc1.VSL_IMO_NO,bc1.VSL_NAME,bc1.VOYAGE,\n" +
+				"    bc1.GID as GID,bc1.VSL_IMO_NO,bc1.VSL_NAME,bc1.VOYAGE,\n" +
 				"    bc1.ACCURATE_IMONO,bc1.ACCURATE_VSLNAME,bc1.BL_NO,\n" +
 				"    bc1.MASTER_BL_NO,bc1.I_E_MARK,bc1.BIZ_STAGE_NO,\n" +
 				"    bc1.BIZ_STAGE_CODE,bc1.BIZ_STAGE_NAME,bc1.BIZ_TIME,\n" +
 				"    bc1.BIZ_STATUS_CODE,bc1.BIZ_STATUS,bc1.BIZ_STATUS_DESC,\n" +
-				"    cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,bc1.ISDELETED,\n" +
+				"    cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,bc1.ISDELETED,bc1.UUID,\n" +
 				"    bc1.BIZ_STATUS_IFFECTIVE\n" +
 				"  from billFromCtnr as bc1 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF bc1.LASTUPDATEDDT as ospd\n" +
 				"    on 'DATA_FLINK_FULL_FLINK_TRACING_COARRI'=ospd.APP_NAME\n" +
@@ -516,15 +519,15 @@ public class coarri_container {
 				"insert into kafka_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"select\n" +
 				"  GID, 'DATA_FLINK_FULL_FLINK_TRACING_COARRI' as APP_NAME, 'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  Row(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  Row(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
 				"  (select\n" +
-				"    bc3.UUID as GID,bc3.VSL_IMO_NO,bc3.VSL_NAME,bc3.VOYAGE,\n" +
+				"    bc3.GID as GID,bc3.VSL_IMO_NO,bc3.VSL_NAME,bc3.VOYAGE,\n" +
 				"    bc3.ACCURATE_IMONO,bc3.ACCURATE_VSLNAME,bc3.BL_NO,\n" +
 				"    bc3.MASTER_BL_NO,bc3.I_E_MARK,bc3.BIZ_STAGE_NO,\n" +
 				"    bc3.BIZ_STAGE_CODE,bc3.BIZ_STAGE_NAME,bc3.BIZ_TIME,\n" +
 				"    bc3.BIZ_STATUS_CODE,bc3.BIZ_STATUS,bc3.BIZ_STATUS_DESC,\n" +
-				"    cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,bc3.ISDELETED,bc3.BIZ_STATUS_IFFECTIVE\n" +
+				"    cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,bc3.ISDELETED,bc3.UUID,bc3.BIZ_STATUS_IFFECTIVE\n" +
 				"  from billwithblctnr as bc3 left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF bc3.LASTUPDATEDDT as ospd1\n" +
 				"    on 'DATA_FLINK_FULL_FLINK_TRACING_COARRI'=ospd1.APP_NAME\n" +
 				"    AND 'DM.TRACK_BIZ_STATUS_BILL'=ospd1.TABLE_NAME\n" +

@@ -129,12 +129,12 @@ public class elc300 {
 				"  uuid() as UUID,\n" +
 				"  1 as BIZ_STATUS_IFFECTIVE\n" +
 				"from commonTB\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim1 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',commonTB.VSL_IMO_NO) = dim1.key and 'IMO_NO' = dim1.hashkey --通过IMO查\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim2 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',commonTB.VSL_IMO_NO) = dim2.key and 'VSL_NAME_EN' = dim2.hashkey --通过IMO查\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim5 on concat('BDCP:DIM:DIM_SHIP:VSL_NAME_EN=',commonTB.VSL_NAME) = dim5.key and 'IMO_NO' = dim5.hashkey --通过船名查\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim6 on concat('BDCP:DIM:DIM_SHIP:VSL_NAME_EN=',commonTB.VSL_NAME) = dim6.key and 'VSL_NAME_EN' = dim6.hashkey --通过船名查\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=',commonTB.BIZ_STAGE_NO,'&SUB_STAGE_CODE=',commonTB.BIZ_STAGE_CODE) = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=lift_off_status&TYPE_CODE=',commonTB.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
+				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim1 on concat('DIM:DIM_SHIP:IMO_NO=',commonTB.VSL_IMO_NO) = dim1.key and 'IMO_NO' = dim1.hashkey --通过IMO查\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim2 on concat('DIM:DIM_SHIP:IMO_NO=',commonTB.VSL_IMO_NO) = dim2.key and 'VSL_NAME_EN' = dim2.hashkey --通过IMO查\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim5 on concat('DIM:DIM_SHIP:VSL_NAME_EN=',commonTB.VSL_NAME) = dim5.key and 'IMO_NO' = dim5.hashkey --通过船名查\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim6 on concat('DIM:DIM_SHIP:VSL_NAME_EN=',commonTB.VSL_NAME) = dim6.key and 'VSL_NAME_EN' = dim6.hashkey --通过船名查\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim3 on concat('DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=',commonTB.BIZ_STAGE_NO,'&SUB_STAGE_CODE=',commonTB.BIZ_STAGE_CODE) = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim4 on concat('DIM:DIM_COMMON_MINI:COMMON_CODE=I_portOut_liftOff&TYPE_CODE=',commonTB.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 		
 		Table withDIMTB_table = tEnv.sqlQuery("select * from withDIMTB");
 		tEnv.toAppendStream(withDIMTB_table, Row.class).print();
@@ -199,7 +199,7 @@ public class elc300 {
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
 				"    UUID STRING,\n" +
-				"    BIZ_STATUS_IFFECTIVE int" +
+				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
@@ -266,7 +266,7 @@ public class elc300 {
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
 				"    UUID STRING,\n" +
-				"    BIZ_STATUS_IFFECTIVE int" +
+				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
@@ -326,7 +326,8 @@ public class elc300 {
 				"where (ocd.BIZ_TIME is null or withDIMTB.BIZ_TIME>ocd.BIZ_TIME)\n" +
 				"and withDIMTB.BIZ_TIME is not null");
 		
-		statementSet.addInsertSql("insert into kafka_ctn\n" +
+		statementSet.addInsertSql("" +
+				"insert into kafka_ctn\n" +
 				"select \n" +
 				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_LIFTOFF' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE, \n" +
