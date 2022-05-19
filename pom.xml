@@ -150,6 +150,15 @@
         </dependency>
         <dependency>
             <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-mt1101</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-mt1101-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
             <artifactId>ep-flink-table-function-jsonarray-to-row-in-coarri</artifactId>
             <version>1.11.1.14</version>
             <scope>system</scope>
