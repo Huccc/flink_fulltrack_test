@@ -120,7 +120,7 @@ public class T_CIQBMS_CIQDOR {
 		tEnv.executeSql("" +
 				"create view sourceTB as\n" +
 				"select\n" +
-				"  msgId,LASTUPDATEDDT,STR_TO_MAP(regexp_replace(regexp_replace(regexp_replace(parseData, '\"', ''), '\\{', ''), '\\}', ''), ',', ':') as pData --parseMap(parseData)\n" +
+				"  msgId,LASTUPDATEDDT,STR_TO_MAP(regexp_replace(regexp_replace(regexp_replace(parseData, '\"', ''), '\\{', ''), '\\}', ''), ',', ':') as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"from kafka_source_data\n" +
 				"WHERE\n" +
 				"  bizId = 'ogg_data'\n" +
@@ -134,7 +134,7 @@ public class T_CIQBMS_CIQDOR {
 		tEnv.executeSql("" +
 				"create view commonTB as\n" +
 				"select\n" +
-				"  msgId,\n" +
+				"  msgId,GID,\n" +
 				"  if(pData['VESSEL_NAME'] <> '', UPPER(TRIM(REGEXP_REPLACE(pData['VESSEL_NAME'], '[\\t\\n\\r]', ''))), 'N/A') as VSL_NAME,\n" +
 				"  if(pData['VOYAGE'] <> '', UPPER(TRIM(REGEXP_REPLACE(pData['VOYAGE'], '[\\t\\n\\r]', ''))), 'N/A') as VOYAGE,\n" +
 				"  pData['SUB_BL_NO'] as BL_NO,\n" +
@@ -149,15 +149,15 @@ public class T_CIQBMS_CIQDOR {
 				"  0 as ISDELETED\n" +
 				"from sourceTB");
 		
-		Table commonTB_table = tEnv.sqlQuery("select * from commonTB");
-		tEnv.toAppendStream(commonTB_table, Row.class).print();
+//		Table commonTB_table = tEnv.sqlQuery("select * from commonTB");
+//		tEnv.toAppendStream(commonTB_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 关联维表
 		tEnv.executeSql("" +
 				"create view billTB as\n" +
 				"select\n" +
-				"  msgId,\n" +
+				"  msgId,GID,\n" +
 				"  if(dim5.res <> '', dim5.res, 'N/A') as VSL_IMO_NO,\n" +
 				"  VSL_NAME,\n" +
 				"  VOYAGE,\n" +
@@ -244,6 +244,7 @@ public class T_CIQBMS_CIQDOR {
 				"    BIZ_STATUS_DESC STRING,\n" +
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
+				"    UUID STRING,\n" +
 				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
@@ -276,14 +277,14 @@ public class T_CIQBMS_CIQDOR {
 		statementSet.addInsertSql("" +
 				"insert into kafka_bill\n" +
 				"select\n" +
-				"  UUID as GID,'DATA_FLINK_FULL_FLINK_TRACING_CIQDOR' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_CIQDOR' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
 				"  (select\n" +
-				"    billTB.UUID,billTB.VSL_IMO_NO,billTB.VSL_NAME,billTB.VOYAGE,billTB.ACCURATE_IMONO,billTB.ACCURATE_VSLNAME,\n" +
+				"    billTB.GID,billTB.VSL_IMO_NO,billTB.VSL_NAME,billTB.VOYAGE,billTB.ACCURATE_IMONO,billTB.ACCURATE_VSLNAME,\n" +
 				"    billTB.BL_NO,billTB.MASTER_BL_NO,billTB.I_E_MARK,billTB.BIZ_STAGE_NO,billTB.BIZ_STAGE_CODE,billTB.BIZ_STAGE_NAME,\n" +
-				"    billTB.BIZ_TIME,billTB.BIZ_STATUS_CODE,billTB.BIZ_STATUS,billTB.BIZ_STATUS_DESC,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,billTB.ISDELETED,billTB.BIZ_STATUS_IFFECTIVE\n" +
+				"    billTB.BIZ_TIME,billTB.BIZ_STATUS_CODE,billTB.BIZ_STATUS,billTB.BIZ_STATUS_DESC,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,billTB.ISDELETED,billTB.UUID,billTB.BIZ_STATUS_IFFECTIVE\n" +
 				"  from billTB left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF billTB.LASTUPDATEDDT as ospd2\n" +
 				"    on 'DATA_FLINK_FULL_FLINK_TRACING_CIQDOR'=ospd2.APP_NAME\n" +
 				"    and 'DM.TRACK_BIZ_STATUS_BILL'=ospd2.TABLE_NAME\n" +

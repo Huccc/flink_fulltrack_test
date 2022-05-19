@@ -1,4 +1,4 @@
-package com.chao.flinksql.mt4101;
+package com.chao.flinksql.coarri.mt6102;
 
 import com.easipass.flink.table.function.udsf.JsonToRowInMt9999;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -8,10 +8,10 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
 
-public class mt4101 {
+public class mt6102 {
 	public static void main(String[] args) throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-		EnvironmentSettings settings = EnvironmentSettings.newInstance().useBlinkPlanner().inStreamingMode().build();
+		EnvironmentSettings settings = EnvironmentSettings.newInstance().inStreamingMode().useBlinkPlanner().build();
 		StreamTableEnvironment tEnv = StreamTableEnvironment.create(env, settings);
 		env.setParallelism(1);
 		
@@ -26,13 +26,13 @@ public class mt4101 {
 				"  parseData STRING,\n" +
 				"  LASTUPDATEDDT AS (PROCTIME() + INTERVAL '8' HOUR)\n" +
 				") WITH (\n" +
-				"  'connector' = 'kafka',\n" +
+				"'connector' = 'kafka',\n" +
 				"  'topic' = 'topic-bdpcollect-msg-parse-result',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
-				"  'properties.group.id' = 'group-flink-msg-mt4101',\n" +
+				"  'properties.group.id' = 'group-flink-msg-mt6102',\n" +
 				"  'scan.startup.mode' = 'group-offsets',\n" +
 				"  'format' = 'json'\n" +
-				")");
+				"  )");
 		
 		// TODO redis dim
 		tEnv.executeSql("" +
@@ -45,40 +45,7 @@ public class mt4101 {
 				"  'redis.ip' = '192.168.129.121:6379,192.168.129.122:6379,192.168.129.123:6379,192.168.129.121:7379,192.168.129.122:7379,192.168.129.123:7379',\n" +
 				"  'database.num' = '0',\n" +
 				"  'operate.type' = 'hash',\n" +
-				"  'redis.version' = '5.0'\n" +
-				")");
-		
-		// TODO Oracle提单表，维表
-		tEnv.executeSql("" +
-				"CREATE TABLE oracle_bill_dim (\n" +
-				"    VSL_IMO_NO STRING,\n" +
-				"    VSL_NAME STRING,\n" +
-				"    VOYAGE STRING,\n" +
-				"    ACCURATE_IMONO STRING,\n" +
-				"    ACCURATE_VSLNAME STRING,\n" +
-				"    BL_NO STRING,\n" +
-				"    MASTER_BL_NO STRING,\n" +
-				"    I_E_MARK STRING,\n" +
-				"    BIZ_STAGE_NO STRING,\n" +
-				"    BIZ_STAGE_CODE STRING,\n" +
-				"    BIZ_STAGE_NAME STRING,\n" +
-				"    BIZ_TIME TIMESTAMP,\n" +
-				"    BIZ_STATUS_CODE STRING,\n" +
-				"    BIZ_STATUS STRING,\n" +
-				"    BIZ_STATUS_DESC STRING,\n" +
-				"    LASTUPDATEDDT TIMESTAMP,\n" +
-				"    ISDELETED DECIMAL(22, 0),\n" +
-				"    UUID STRING,\n" +
-				"    BIZ_STATUS_IFFECTIVE DECIMAL(22, 0),\n" +
-				"    PRIMARY KEY(VSL_IMO_NO,VOYAGE,BL_NO,BIZ_STAGE_NO) NOT ENFORCED\n" +
-				") WITH (\n" +
-				"  'connector' = 'jdbc',\n" +
-				"  'url' = 'jdbc:oracle:thin:@192.168.129.149:1521:test12c',\n" +
-				"  'table-name' = 'DM.TRACK_BIZ_STATUS_BILL',\n" +
-				"  --'dialect-name' = 'Oracle',\n" +
-				"  'driver' = 'oracle.jdbc.OracleDriver',\n" +
-				"  'username' = 'xqwu',\n" +
-				"  'password' = 'easipass'\n" +
+				"  'redis.version' = '2.6'\n" +
 				")");
 		
 		// TODO kafka配置表 维表
@@ -107,89 +74,7 @@ public class mt4101 {
 				"  'lookup.max-retries' = '3'\n" +
 				")");
 		
-		// TODO 注册9999解析函数
-		tEnv.createTemporarySystemFunction("parseMT4101fromMT9999", JsonToRowInMt9999.class);
-		
-		// TODO 解析mt9999
-		tEnv.executeSql("" +
-				"create view source9999TB as\n" +
-				"select\n" +
-				"  msgId, LASTUPDATEDDT,\n" +
-				"  parseMT4101fromMT9999(parseData) as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
-				"from kafka_source_data where bizId='MT9999' and msgType='message_data'");
-		
-		Table source9999TB_table = tEnv.sqlQuery("select * from source9999TB");
-		tEnv.toAppendStream(source9999TB_table, Row.class).print();
-//		env.execute();
-		
-		// TODO 9999获取报文公共字段
-		tEnv.executeSql("" +
-				"create view common9999TB as\n" +
-				"select\n" +
-				"  msgId,GID,LASTUPDATEDDT,\n" +
-				"  pData.Head.MessageID as Head_MessageID,\n" +
-				"  pData.Head.MessageType as MessageType,\n" +
-				"  if(REPLACE(UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.ID, '[\\t\\n\\r]', ''))),'UN','') <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.ID, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') as VSL_IMO_NO,\n" +
-				"  if(UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.JourneyID, '[\\t\\n\\r]', ''))) <> '', UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.JourneyID, '[\\t\\n\\r]', ''))), 'N/A') as VOYAGE,\n" +
-				"  TO_TIMESTAMP(concat(substr(pData.Head.SendTime, 1, 14), '.', substr(pData.Head.SendTime, 15)), 'yyyyMMddHHmmss.SSS') as BIZ_TIME,\n" +
-				"  if(pData.Head.FunctionCode='3', 1, 0) as ISDELETED,\n" +
-				"  pData.Response.Consignment as Consignment\n" +
-				"from source9999TB where MessageType='MT4101'");
-		
-//		Table common9999TB_table = tEnv.sqlQuery("select * from common9999TB");
-//		tEnv.toAppendStream(common9999TB_table, Row.class).print();
-//		env.execute();
-		
-		// TODO 展开9999提单
-		tEnv.executeSql("" +
-				"create view mt9999withBill as\n" +
-				"select\n" +
-				"  msgId, GID, LASTUPDATEDDT, Head_MessageID, VSL_IMO_NO, VOYAGE, BIZ_TIME, ISDELETED, --'I' as I_E_MARK,\n" +
-				"  if(TransportContractDocument.ID <> '', UPPER(TRIM(REGEXP_REPLACE(TransportContractDocument.ID, '[\\t\\n\\r]', ''))), 'N/A') as BL_NO,\n" +
-				"  'N/A' as MASTER_BL_NO,\n" +
-				"  ResponseType.Code as BIZ_STATUS_CODE,\n" +
-				"  if(ResponseType.Text <> '', ResponseType.Text, 'N/A') as BIZ_STATUS_DESC\n" +
-				"from (select * from common9999TB where Consignment is not null) as tempTB2\n" +
-				"cross join unnest(Consignment) AS Consignment(TransportContractDocument,AssociatedTransportDocument,ResponseType)");
-		
-//		Table mt9999withBill_table = tEnv.sqlQuery("select * from mt9999withBill");
-//		tEnv.toAppendStream(mt9999withBill_table, Row.class).print();
-//		env.execute();
-		
-		// TODO 提单结果表
-		tEnv.executeSql("" +
-				"create view resBill as\n" +
-				"select\n" +
-				"  msgId, GID, VSL_IMO_NO,\n" +
-				"  if(dim2.res <> '', dim2.res, 'N/A') as VSL_NAME,\n" +
-				"  VOYAGE,\n" +
-				"  if(dim1.res <> '', dim1.res, 'N/A') as ACCURATE_IMONO,\n" +
-				"  if(dim2.res <> '', dim2.res, 'N/A') as ACCURATE_VSLNAME,\n" +
-				"  BL_NO,\n" +
-				"  MASTER_BL_NO,\n" +
-				"  'E' as I_E_MARK,\n" +
-				"  'C8.5' as BIZ_STAGE_NO,\n" +
-				"  'E_cusDecl_MT4101' as BIZ_STAGE_CODE,\n" +
-				"  if(dim3.res <> '', dim3.res, 'N/A') as BIZ_STAGE_NAME,\n" +
-				"  BIZ_TIME,\n" +
-				"  BIZ_STATUS_CODE,\n" +
-				"  if(dim4.res <> '', dim4.res, 'N/A') as BIZ_STATUS,\n" +
-				"  BIZ_STATUS_DESC,\n" +
-				"  LASTUPDATEDDT,\n" +
-				"  ISDELETED,\n" +
-				"  uuid() as UUID,\n" +
-				"  if(BIZ_STATUS_CODE='01' and BIZ_STATUS_DESC not like '%删除%', 1, 0) as BIZ_STATUS_IFFECTIVE\n" +
-				"from mt9999withBill\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim1 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',mt9999withBill.VSL_IMO_NO) = dim1.key and 'IMO_NO' = dim1.hashkey --通过IMO查\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim2 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',mt9999withBill.VSL_IMO_NO) = dim2.key and 'VSL_NAME_EN' = dim2.hashkey --通过IMO查\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=C8.5&SUB_STAGE_CODE=E_cusDecl_MT4101') = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999withBill.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
-		
-		Table resBill_table = tEnv.sqlQuery("select * from resBill");
-		tEnv.toAppendStream(resBill_table, Row.class).print();
-//		env.execute();
-		
-		// TODO Oracle sink表，提单表
+		// TODO Oracle Sink表 提单表
 		tEnv.executeSql("" +
 				"CREATE TABLE oracle_track_biz_status_bill (\n" +
 				"    VSL_IMO_NO STRING,\n" +
@@ -252,23 +137,105 @@ public class mt4101 {
 				"  )\n" +
 				") with (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'MT4101_TEST_BILL',\n" +
+				"  'topic' = 'MT6102_TEST_BILL',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
 				"  'format' = 'json'\n" +
 				")");
 		
+		// TODO 注册9999解析函数 临时系统函数
+		tEnv.createTemporarySystemFunction("parseMT6102fromMT9999", JsonToRowInMt9999.class);
+		
+		// TODO 解析mt9999
+		tEnv.executeSql("" +
+				"create view source9999TB as\n" +
+				"select\n" +
+				"  msgId,LASTUPDATEDDT,\n" +
+				"  parseMT6102fromMT9999(parseData) as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+				"from kafka_source_data where bizId='MT9999' and msgType='message_data'");
+		
+//		Table source9999TB_table = tEnv.sqlQuery("select * from source9999TB");
+//		tEnv.toAppendStream(source9999TB_table, Row.class).print();
+//		env.execute();
+		
+		// TODO 9999获取报文公共字段
+		tEnv.executeSql("" +
+				"create view common9999TB as\n" +
+				"select\n" +
+				"  msgId,GID,LASTUPDATEDDT,\n" +
+				"  pData.Head.MessageID as Head_MessageID,\n" +
+				"  pData.Head.MessageType as MessageType,\n" +
+				"  if(REPLACE(UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.ID, '[\\t\\n\\r]', ''))),'UN','') <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.ID, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') as VSL_IMO_NO,\n" +
+				"  if(UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.JourneyID, '[\\t\\n\\r]', ''))) <> '', UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.JourneyID, '[\\t\\n\\r]', ''))), 'N/A') as VOYAGE,\n" +
+				"  TO_TIMESTAMP(concat(substr(pData.Head.SendTime, 1, 14), '.', substr(pData.Head.SendTime, 15)), 'yyyyMMddHHmmss.SSS') as BIZ_TIME,\n" +
+				"  if(pData.Head.FunctionCode='3', 1, 0) as ISDELETED,\n" +
+				"  pData.Response.Consignment as Consignment\n" +
+				"from source9999TB where MessageType='MT6102'");
+		
+//		Table common9999TB_table = tEnv.sqlQuery("select * from common9999TB");
+//		tEnv.toAppendStream(common9999TB_table, Row.class).print();
+//		env.execute();
+		
+		// TODO 展开9999提单
+		tEnv.executeSql("" +
+				"create view mt9999withBill as\n" +
+				"select\n" +
+				"  msgId, GID, LASTUPDATEDDT, Head_MessageID, VSL_IMO_NO, VOYAGE, BIZ_TIME, ISDELETED, --'I' as I_E_MARK,\n" +
+				"  if(TransportContractDocument.ID <> '', UPPER(TRIM(REGEXP_REPLACE(TransportContractDocument.ID, '[\\t\\n\\r]', ''))), 'N/A') as BL_NO,\n" +
+				"  'N/A' as MASTER_BL_NO,\n" +
+				"  ResponseType.Code as BIZ_STATUS_CODE,\n" +
+				"  if(ResponseType.Text <> '', ResponseType.Text, 'N/A') as BIZ_STATUS_DESC\n" +
+				"from (select * from common9999TB where Consignment is not null) as tempTB2\n" +
+				"cross join unnest(Consignment) AS Consignment(TransportContractDocument,AssociatedTransportDocument,ResponseType)");
+		
+//		Table mt9999withBill_table = tEnv.sqlQuery("select * from mt9999withBill");
+//		tEnv.toAppendStream(mt9999withBill_table, Row.class).print();
+//		env.execute();
+		
+		// TODO 结果表
+		tEnv.executeSql("" +
+				"create view resBill as\n" +
+				"select\n" +
+				"  msgId, GID, VSL_IMO_NO,\n" +
+				"  if(dim2.res <> '', dim2.res, 'N/A') as VSL_NAME,\n" +
+				"  VOYAGE,\n" +
+				"  if(dim1.res <> '', dim1.res, 'N/A') as ACCURATE_IMONO,\n" +
+				"  if(dim2.res <> '', dim2.res, 'N/A') as ACCURATE_VSLNAME,\n" +
+				"  BL_NO,\n" +
+				"  MASTER_BL_NO,\n" +
+				"  'I' as I_E_MARK,\n" +
+				"  'D6a.5' as BIZ_STAGE_NO,\n" +
+				"  'I_cusDecl_mt6102' as BIZ_STAGE_CODE,\n" +
+				"  if(dim3.res <> '', dim3.res, 'N/A') as BIZ_STAGE_NAME,\n" +
+				"  BIZ_TIME,\n" +
+				"  BIZ_STATUS_CODE,\n" +
+				"  if(dim4.res <> '', dim4.res, 'N/A') as BIZ_STATUS,\n" +
+				"  BIZ_STATUS_DESC,\n" +
+				"  LASTUPDATEDDT,\n" +
+				"  ISDELETED,\n" +
+				"  uuid() as UUID,\n" +
+				"  if(BIZ_STATUS_CODE='01' and BIZ_STATUS_DESC not like '%删除%',1,0) as BIZ_STATUS_IFFECTIVE\n" +
+				"from mt9999withBill\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim1 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',mt9999withBill.VSL_IMO_NO) = dim1.key and 'IMO_NO' = dim1.hashkey --通过IMO查\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim2 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',mt9999withBill.VSL_IMO_NO) = dim2.key and 'VSL_NAME_EN' = dim2.hashkey --通过IMO查\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=D6a.5&SUB_STAGE_CODE=I_cusDecl_mt6102') = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999withBill.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
+		
+		Table resBill_table = tEnv.sqlQuery("select * from resBill");
+		tEnv.toAppendStream(resBill_table, Row.class).print();
+//		env.execute();
+		
 		StatementSet statementSet = tEnv.createStatementSet();
 		
-		// TODO 写入Oracle结果表
+		// TODO SINK
+		// TODO Oracle sink
 		statementSet.addInsertSql("" +
 				"insert into oracle_track_biz_status_bill\n" +
 				"select\n" +
 				"  resBill.VSL_IMO_NO,resBill.VSL_NAME,resBill.VOYAGE,resBill.ACCURATE_IMONO,resBill.ACCURATE_VSLNAME,\n" +
 				"  resBill.BL_NO,resBill.MASTER_BL_NO,resBill.I_E_MARK,resBill.BIZ_STAGE_NO,resBill.BIZ_STAGE_CODE,\n" +
 				"  resBill.BIZ_STAGE_NAME,resBill.BIZ_TIME,resBill.BIZ_STATUS_CODE,resBill.BIZ_STATUS,\n" +
-				"  resBill.BIZ_STATUS_DESC,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,resBill.ISDELETED,\n" +
-				"  resBill.UUID,resBill.BIZ_STATUS_IFFECTIVE\n" +
-				"from resBill left join oracle_bill_dim FOR SYSTEM_TIME AS OF resBill.LASTUPDATEDDT as obd\n" +
+				"  resBill.BIZ_STATUS_DESC,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,resBill.ISDELETED,resBill.UUID,resBill.BIZ_STATUS_IFFECTIVE\n" +
+				"from resBill left join oracle_track_biz_status_bill FOR SYSTEM_TIME AS OF resBill.LASTUPDATEDDT as obd\n" +
 				"  on resBill.VSL_IMO_NO = obd.VSL_IMO_NO\n" +
 				"  and resBill.VOYAGE = obd.VOYAGE\n" +
 				"  and resBill.BL_NO = obd.BL_NO\n" +
@@ -276,11 +243,11 @@ public class mt4101 {
 				"where (obd.BIZ_TIME is null or resBill.BIZ_TIME>obd.BIZ_TIME)\n" +
 				"  and resBill.BIZ_TIME is not null");
 		
-		// TODO 写入Kafka结果表
+		// TODO Kafka sink
 		statementSet.addInsertSql("" +
 				"insert into kafka_bill\n" +
 				"select\n" +
-				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_MT4101' as APP_NAME,\n" +
+				"  GID,'DATA_FLINK_FULL_FLINK_TRACING_MT6102' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
 				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
@@ -289,7 +256,7 @@ public class mt4101 {
 				"      resBill.BL_NO,resBill.MASTER_BL_NO,resBill.I_E_MARK,resBill.BIZ_STAGE_NO,resBill.BIZ_STAGE_CODE,resBill.BIZ_STAGE_NAME,\n" +
 				"      resBill.BIZ_TIME,resBill.BIZ_STATUS_CODE,resBill.BIZ_STATUS,resBill.BIZ_STATUS_DESC,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,resBill.ISDELETED,resBill.UUID,resBill.BIZ_STATUS_IFFECTIVE\n" +
 				"  from resBill left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF resBill.LASTUPDATEDDT as ospd2\n" +
-				"      on 'DATA_FLINK_FULL_FLINK_TRACING_MT4101'=ospd2.APP_NAME\n" +
+				"      on 'DATA_FLINK_FULL_FLINK_TRACING_MT6102'=ospd2.APP_NAME\n" +
 				"      and 'DM.TRACK_BIZ_STATUS_BILL'=ospd2.TABLE_NAME\n" +
 				"  where ospd2.ISCURRENT=1 and resBill.BIZ_TIME is not null\n" +
 				"  ) as temp2");

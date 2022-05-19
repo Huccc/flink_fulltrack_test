@@ -35,8 +35,8 @@ public class T_CIQBMS_CIQDOR_test {
 				"select '1359023762372042843' as msgId," +
 				"'ogg_data' as bizId," +
 				"'null' as msgType," +
-				"'null' as bizUniqueId," +
+				"'T_CIQBMS_CIQDOR_test' as bizUniqueId," +
 				"'SRC_GCC.T_CIQBMS_CIQDOR' as destination," +
-				"'{\"ID\":98308,\"MSGLOGID\":\"31111\",\"MSGTYPE\":null,\"ENTRYID\":null,\"EXAMRECID\":null,\"EXAMMODE\":null,\"IEFLAG\":\"E\",\"VESSEL_NAME\":\"HARRIER HUNTER\",\"VOYAGE\":\"ac7\",\"SUB_BL_NO\":\"100002\",\"BL_NO\":\"master100002\",\"TRADENAME\":null,\"OWNERNAME\":null,\"AGENTNAME\":null,\"DISCHARGE_PLACE\":null,\"CUSTOMS_DISTRICT\":null,\"OUT_DOOR_TIME\":\"2022-05-01 00:01:25\",\"FREEFLAG\":null,\"OP_TYPE\":\"I\",\"F_TAG\":null,\"MATCH_FLAG\":null,\"MSG2DB_TIME\":null,\"CAPXTIMESTAMP\":null,\"CHECKID\":null,\"PARENTLOGID\":\"31111\",\"CTNNO\":\"100003\",\"CAPXTIMESTAMP\":null,\"CHECKTYPE\":null}' as parseData");
+				"'{\"ID\":98308,\"MSGLOGID\":\"31111\",\"MSGTYPE\":null,\"ENTRYID\":null,\"EXAMRECID\":null,\"EXAMMODE\":null,\"IEFLAG\":\"E\",\"VESSEL_NAME\":\"HARRIER HUNTER\",\"VOYAGE\":\"ac8\",\"SUB_BL_NO\":\"100002\",\"BL_NO\":\"master100002\",\"TRADENAME\":null,\"OWNERNAME\":null,\"AGENTNAME\":null,\"DISCHARGE_PLACE\":null,\"CUSTOMS_DISTRICT\":null,\"OUT_DOOR_TIME\":\"2022-05-01 00:01:25\",\"FREEFLAG\":null,\"OP_TYPE\":\"I\",\"F_TAG\":null,\"MATCH_FLAG\":null,\"MSG2DB_TIME\":null,\"CAPXTIMESTAMP\":null,\"CHECKID\":null,\"PARENTLOGID\":\"31111\",\"CTNNO\":\"100003\",\"CAPXTIMESTAMP\":null,\"CHECKTYPE\":null}' as parseData");
 	}
 }

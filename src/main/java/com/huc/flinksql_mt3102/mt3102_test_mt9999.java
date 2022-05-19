@@ -26,7 +26,7 @@ public class mt3102_test_mt9999 {
 				"  'scan.startup.mode' = 'group-offsets'\n" +
 				")");
 		
-		String msg2 = "{\"Response\":{\"BorderTransportMeans\":{\"JourneyID\":\"MT5102001\",\"ID\":\"UN9133329\"},\"Consignment\":[{\"AssociatedTransportDocument\":{\"ID\":\"\"},\"TransportContractDocument\":{\"ID\":\"HDM520111315\"},\"ResponseType\":{\"Text\":\"2313\",\"Code\":\"02\"}}],\"TransportEquipment\":[{\"EquipmentIdentification\":{\"ID\":\"HDM620111315\"},\"TransportContractDocument\":{\"ID\":\"HDM520111315\"},\"ResponseType\":{\"Text\":\"2323\",\"Code\":\"01\"}}]},\"Head\":{\"ReceiverID\":\"2200132208081\",\"SendTime\":\"20211104075450000\",\"Version\":\"1.0\",\"FunctionCode\":\"3\",\"SenderID\":\"2200\",\"MessageType\":\"MT3102\",\"MessageID\":\"SEA_2200631423296_20201221015221001\"},\"ExtraInfo\":{\"receiver\":\"edi\",\"sender\":\"CNC2200\"}}\n";
+		String msg2 = "{\"Response\":{\"BorderTransportMeans\":{\"JourneyID\":\"MT5102001\",\"ID\":\"UN9133329\"},\"Consignment\":[{\"AssociatedTransportDocument\":{\"ID\":\"\"},\"TransportContractDocument\":{\"ID\":\"HDM520111315\"},\"ResponseType\":{\"Text\":\"2313\",\"Code\":\"02\"}}],\"TransportEquipment\":[{\"EquipmentIdentification\":{\"ID\":\"HDM620111315\"},\"TransportContractDocument\":{\"ID\":\"HDM520111315\"},\"ResponseType\":{\"Text\":\"2323\",\"Code\":\"01\"}}]},\"Head\":{\"ReceiverID\":\"2200132208081\",\"SendTime\":\"20211104075450000\",\"Version\":\"1.0\",\"FunctionCode\":\"3\",\"SenderID\":\"2200\",\"MessageType\":\"MT3102\",\"MessageID\":\"DSEA_2200631423296_20201221015221001\"},\"ExtraInfo\":{\"receiver\":\"edi\",\"sender\":\"CNC2200\"}}\n";
 		
 //		tEnv.executeSql("" +
 //				"insert into kafka_source_data(msgId,bizId,msgType,bizUniqueId,destination,parseData) " +
@@ -42,7 +42,7 @@ public class mt3102_test_mt9999 {
 				"select '1359023762372042843' as msgId," +
 				"'MT9999' as bizId," +
 				"'message_data' as msgType," +
-				"'null' as bizUniqueId," +
+				"'MT9999_TEST' as bizUniqueId," +
 				"'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
 				"'" + msg2 + "'" + "as parseData");
 	}

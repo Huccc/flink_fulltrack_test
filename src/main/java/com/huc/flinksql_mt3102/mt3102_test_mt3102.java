@@ -80,7 +80,7 @@ public class mt3102_test_mt3102 {
 				"select '1359023762372042843' as msgId," +
 				"'MT3102' as bizId," +
 				"'message_data' as msgType," +
-				"'null' as bizUniqueId," +
+				"'MT3102_TEST' as bizUniqueId," +
 				"'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
 				"'" + msg + "'" + "as parseData");
 		

@@ -5,9 +5,7 @@ import com.easipass.flink.table.function.udsf.JsonToRowInMt9999;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.StatementSet;
-import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.types.Row;
 
 public class mt3102 {
 	public static void main(String[] args) throws Exception {
@@ -62,6 +60,7 @@ public class mt3102 {
 				"    BIZ_STATUS_DESC STRING,\n" +
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
+				"    UUID STRING,\n" +
 				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
@@ -97,6 +96,7 @@ public class mt3102 {
 				"    BIZ_STATUS_DESC STRING,\n" +
 				"    LASTUPDATEDDT TIMESTAMP(3),\n" +
 				"    ISDELETED int,\n" +
+				"    UUID STRING,\n" +
 				"    BIZ_STATUS_IFFECTIVE int\n" +
 				"  )\n" +
 				") with (\n" +
@@ -248,19 +248,19 @@ public class mt3102 {
 				"create view mt3102TB as\n" +
 				"select  msgId,\n" +
 				"        JSON_TO_ROW_IN_MT3102(parseData) as pData,\n" +
-				"        LASTUPDATEDDT\n" +
+				"        LASTUPDATEDDT,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"from kafka_source_data\n" +
 				"WHERE msgType = 'message_data' AND bizId = 'MT3102'");
 		
-		Table mt3102TB_table = tEnv.sqlQuery("select * from mt3102TB");
-		tEnv.toAppendStream(mt3102TB_table, Row.class).print();
+//		Table mt3102TB_table = tEnv.sqlQuery("select * from mt3102TB");
+//		tEnv.toAppendStream(mt3102TB_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 获取3102的箱信息
 		tEnv.executeSql("" +
 				"create view mt3102ctnr as\n" +
 				"select\n" +
-				"    msgId,\n" +
+				"    msgId,GID,\n" +
 				"    LASTUPDATEDDT,\n" +
 				"    pData.Head.MessageID as Head_MessageID,\n" +
 				"    pData.Head.FunctionCode as Head_FunctionCode,\n" +
@@ -272,8 +272,8 @@ public class mt3102 {
 				"from mt3102TB cross join  unnest(mt3102TB.pData.Declaration.TransportEquipment) AS TransportEquipment(EquipmentIdentification,CharacteristicCode,FullnessCode,SealID)\n" +
 				"where pData.Head.MessageID LIKE 'D%'");
 		
-		Table mt3102ctnr_table = tEnv.sqlQuery("select * from mt3102ctnr");
-		tEnv.toAppendStream(mt3102ctnr_table, Row.class).print();
+//		Table mt3102ctnr_table = tEnv.sqlQuery("select * from mt3102ctnr");
+//		tEnv.toAppendStream(mt3102ctnr_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 注册临时解析函数9999
@@ -284,7 +284,7 @@ public class mt3102 {
 				"create view mt9999TB as\n" +
 				"select  msgId,\n" +
 				"        LASTUPDATEDDT,\n" +
-				"        mt9999_JSON_TO_ROW_IN_MT3102(parseData) as p9Data\n" +
+				"        mt9999_JSON_TO_ROW_IN_MT3102(parseData) as p9Data,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"from kafka_source_data\n" +
 				"WHERE msgType = 'message_data' AND bizId = 'MT9999'");
 
@@ -296,7 +296,7 @@ public class mt3102 {
 		tEnv.executeSql("" +
 				"create view mt9999common as\n" +
 				"select\n" +
-				"    msgId,\n" +
+				"    msgId,GID,\n" +
 				"    LASTUPDATEDDT,\n" +
 				"    p9Data.Head.MessageID as MessageID,\n" +
 				"    p9Data.Head.FunctionCode as FunctionCode,\n" +
@@ -319,7 +319,7 @@ public class mt3102 {
 		tEnv.executeSql("" +
 				"create view mt9999ctnr as\n" +
 				"select\n" +
-				"    msgId,\n" +
+				"    msgId,GID,\n" +
 				"    LASTUPDATEDDT,\n" +
 				"    MessageID,\n" +
 				"    FunctionCode,\n" +
@@ -334,15 +334,15 @@ public class mt3102 {
 				"from (select * from mt9999common where TransportEquipment is not null) as temp3\n" +
 				"    cross join unnest(TransportEquipment) AS TransportEquipment(EquipmentIdentification,ResponseType)");
 		
-		Table mt9999ctnr_table = tEnv.sqlQuery("select * from mt9999ctnr");
-		tEnv.toAppendStream(mt9999ctnr_table, Row.class).print();
+//		Table mt9999ctnr_table = tEnv.sqlQuery("select * from mt9999ctnr");
+//		tEnv.toAppendStream(mt9999ctnr_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 疏港运抵（箱）
 		tEnv.executeSql("" +
 				"create view mt3102_ctn as\n" +
 				"select\n" +
-				"    mt9999ctnr.msgId,\n" +
+				"    mt9999ctnr.msgId,mt9999ctnr.GID,\n" +
 				"    mt9999ctnr.BorderTransportMeans_ID as VSL_IMO_NO,--船舶IMO\n" +
 				"    if(dim1.res <> '', dim1.res, 'N/A') as VSL_NAME,--船名\n" +
 				"    mt9999ctnr.BorderTransportMeans_JourneyID as VOYAGE,--航次\n" +
@@ -368,15 +368,15 @@ public class mt3102 {
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999ctnr.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999ctnr.ctnr_ResponseType_Code) = dim4.key and 'TYPE_NAME' = dim4.hashkey --业务状态\n" +
 				"where mt9999ctnr.MessageID like 'SEA%'");
 		
-		Table mt3102_ctn_table = tEnv.sqlQuery("select * from mt3102_ctn");
-		tEnv.toAppendStream(mt3102_ctn_table, Row.class).print();
+//		Table mt3102_ctn_table = tEnv.sqlQuery("select * from mt3102_ctn");
+//		tEnv.toAppendStream(mt3102_ctn_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 分拨运抵（箱）
 		tEnv.executeSql("" +
 				"create view mt3102sub_ctn as\n" +
 				"select\n" +
-				"    mt9999ctnr.msgId,\n" +
+				"    mt9999ctnr.msgId,mt9999ctnr.GID,\n" +
 				"    mt9999ctnr.BorderTransportMeans_ID as VSL_IMO_NO,--船舶IMO\n" +
 				"    if(dim1.res <> '', dim1.res, 'N/A') as VSL_NAME,--船名\n" +
 				"    mt9999ctnr.BorderTransportMeans_JourneyID as VOYAGE,--航次\n" +
@@ -402,8 +402,8 @@ public class mt3102 {
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999ctnr.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999ctnr.ctnr_ResponseType_Code) = dim4.key and 'TYPE_NAME' = dim4.hashkey --业务状态\n" +
 				"where mt9999ctnr.MessageID like 'D%'");
 		
-		Table mt3102sub_ctn_table = tEnv.sqlQuery("select * from mt3102sub_ctn");
-		tEnv.toAppendStream(mt3102sub_ctn_table, Row.class).print();
+//		Table mt3102sub_ctn_table = tEnv.sqlQuery("select * from mt3102sub_ctn");
+//		tEnv.toAppendStream(mt3102sub_ctn_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 分拨运抵（提单）
@@ -411,6 +411,7 @@ public class mt3102 {
 				"create view mt3102sub_bill as\n" +
 				"select\n" +
 				"    mt3102sub_ctn.msgId,\n" +
+				"    mt3102sub_ctn.GID,\n" +
 				"    mt3102sub_ctn.VSL_IMO_NO,\n" +
 				"    mt3102sub_ctn.VSL_NAME,\n" +
 				"    mt3102sub_ctn.VOYAGE,\n" +
@@ -437,8 +438,8 @@ public class mt3102 {
 				"        and mt3102sub_ctn.CTNR_NO = oBCd.CTNR_NO\n" +
 				"where oBCd.BL_NO is not null and oBCd.MASTER_BL_NO <> 'N/A'");
 		
-		Table mt3102sub_bill_table = tEnv.sqlQuery("select * from mt3102sub_bill");
-		tEnv.toAppendStream(mt3102sub_bill_table, Row.class).print();
+//		Table mt3102sub_bill_table = tEnv.sqlQuery("select * from mt3102sub_bill");
+//		tEnv.toAppendStream(mt3102sub_bill_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 分拨入库（箱）
@@ -455,6 +456,7 @@ public class mt3102 {
 				"(\n" +
 				"    select\n" +
 				"        mt3102ctnr.msgId,\n" +
+				"        mt3102ctnr.GID,\n" +
 				"        mt3102ctnr.BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO\n" +
 				"        mt3102ctnr.BorderTransportMeans_Name as VSL_NAME, --船名\n" +
 				"        mt3102ctnr.BorderTransportMeans_JourneyID as VOYAGE, --航次\n" +
@@ -476,8 +478,8 @@ public class mt3102 {
 				"left join redis_dim FOR SYSTEM_TIME AS OF temp4.LASTUPDATEDDT as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=',temp4.BIZ_STAGE_NO,'&SUB_STAGE_CODE=',temp4.BIZ_STAGE_CODE) = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF temp4.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=arrival_status&TYPE_CODE=',temp4.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 		
-		Table mt3102subarv_ctn_table = tEnv.sqlQuery("select * from mt3102subarv_ctn");
-		tEnv.toAppendStream(mt3102subarv_ctn_table, Row.class).print();
+//		Table mt3102subarv_ctn_table = tEnv.sqlQuery("select * from mt3102subarv_ctn");
+//		tEnv.toAppendStream(mt3102subarv_ctn_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 分拨入库（提单）
@@ -485,6 +487,7 @@ public class mt3102 {
 				"create view mt3102subarv_bill as\n" +
 				"select\n" +
 				"    mt3102subarv_ctn.msgId,\n" +
+				"    mt3102subarv_ctn.GID,\n" +
 				"    mt3102subarv_ctn.VSL_IMO_NO,\n" +
 				"    mt3102subarv_ctn.VSL_NAME,\n" +
 				"    mt3102subarv_ctn.VOYAGE,\n" +
@@ -511,8 +514,8 @@ public class mt3102 {
 				"        and mt3102subarv_ctn.CTNR_NO = oBCd.CTNR_NO\n" +
 				"where oBCd.BL_NO is not null and oBCd.MASTER_BL_NO <> 'N/A'");
 		
-		Table mt3102subarv_bill_table = tEnv.sqlQuery("select * from mt3102subarv_bill");
-		tEnv.toAppendStream(mt3102subarv_bill_table, Row.class).print();
+//		Table mt3102subarv_bill_table = tEnv.sqlQuery("select * from mt3102subarv_bill");
+//		tEnv.toAppendStream(mt3102subarv_bill_table, Row.class).print();
 //		env.execute();
 		
 		StatementSet statementSet = tEnv.createStatementSet();
@@ -571,7 +574,7 @@ public class mt3102 {
 				"                                         TABLE_NAME,\n" +
 				"                                         SUBSCRIBE_TYPE,\n" +
 				"                                         DATA)\n" +
-				"   SELECT UUID AS GID,\n" +
+				"   SELECT GID,\n" +
 				"          'DATA_FLINK_FULL_FLINK_TRACING_MT3102' AS APP_NAME,\n" +
 				"          'DM.TRACK_BIZ_STATUS_CTNR' AS TABLE_NAME,\n" +
 				"          'I' AS SUBSCRIBE_TYPE,\n" +
@@ -591,9 +594,10 @@ public class mt3102 {
 				"               BIZ_STATUS_DESC,\n" +
 				"               LASTUPDATEDDT,\n" +
 				"               ISDELETED,\n" +
+				"               UUID,\n" +
 				"               BIZ_STATUS_IFFECTIVE)\n" +
 				"             AS DATA\n" +
-				"     FROM (SELECT M.UUID,\n" +
+				"     FROM (SELECT M.GID,\n" +
 				"                  M.VSL_IMO_NO,\n" +
 				"                  M.VSL_NAME,\n" +
 				"                  M.VOYAGE,\n" +
@@ -610,6 +614,7 @@ public class mt3102 {
 				"                  M.BIZ_STATUS_DESC,\n" +
 				"                  M.LASTUPDATEDDT,\n" +
 				"                  M.ISDELETED,\n" +
+				"                  M.UUID,\n" +
 				"                  M.BIZ_STATUS_IFFECTIVE\n" +
 				"             FROM mt3102_ctn AS M\n" +
 				"            LEFT JOIN oracle_subscribe_papam_dim FOR SYSTEM_TIME AS OF M.LASTUPDATEDDT AS P\n" +
@@ -667,7 +672,7 @@ public class mt3102 {
 				"                                         TABLE_NAME,\n" +
 				"                                         SUBSCRIBE_TYPE,\n" +
 				"                                         DATA)\n" +
-				"   SELECT UUID AS GID,\n" +
+				"   SELECT GID,\n" +
 				"          'DATA_FLINK_FULL_FLINK_TRACING_MT3102SUB' AS APP_NAME,\n" +
 				"          'DM.TRACK_BIZ_STATUS_CTNR' AS TABLE_NAME,\n" +
 				"          'I' AS SUBSCRIBE_TYPE,\n" +
@@ -686,9 +691,9 @@ public class mt3102 {
 				"               BIZ_STATUS,\n" +
 				"               BIZ_STATUS_DESC,\n" +
 				"               LASTUPDATEDDT,\n" +
-				"               ISDELETED,BIZ_STATUS_IFFECTIVE)\n" +
+				"               ISDELETED,UUID,BIZ_STATUS_IFFECTIVE)\n" +
 				"             AS DATA\n" +
-				"     FROM (SELECT M.UUID,\n" +
+				"     FROM (SELECT M.GID,\n" +
 				"                  M.VSL_IMO_NO,\n" +
 				"                  M.VSL_NAME,\n" +
 				"                  M.VOYAGE,\n" +
@@ -704,7 +709,7 @@ public class mt3102 {
 				"                  M.BIZ_STATUS,\n" +
 				"                  M.BIZ_STATUS_DESC,\n" +
 				"                  M.LASTUPDATEDDT,\n" +
-				"                  M.ISDELETED,M.BIZ_STATUS_IFFECTIVE\n" +
+				"                  M.ISDELETED,M.UUID,M.BIZ_STATUS_IFFECTIVE\n" +
 				"             FROM mt3102sub_ctn AS M\n" +
 				"            LEFT JOIN oracle_subscribe_papam_dim FOR SYSTEM_TIME AS OF M.LASTUPDATEDDT AS P\n" +
 				"                  ON 'DATA_FLINK_FULL_FLINK_TRACING_MT3102SUB'=P.APP_NAME\n" +
@@ -763,7 +768,7 @@ public class mt3102 {
 				"                                         TABLE_NAME,\n" +
 				"                                         SUBSCRIBE_TYPE,\n" +
 				"                                         DATA)\n" +
-				"   SELECT UUID AS GID,\n" +
+				"   SELECT GID,\n" +
 				"          'DATA_FLINK_FULL_FLINK_TRACING_MT3102SUB' AS APP_NAME,\n" +
 				"          'DM.TRACK_BIZ_STATUS_BILL' AS TABLE_NAME,\n" +
 				"          'I' AS SUBSCRIBE_TYPE,\n" +
@@ -783,9 +788,9 @@ public class mt3102 {
 				"               BIZ_STATUS,\n" +
 				"               BIZ_STATUS_DESC,\n" +
 				"               LASTUPDATEDDT,\n" +
-				"               ISDELETED,BIZ_STATUS_IFFECTIVE)\n" +
+				"               ISDELETED,UUID,BIZ_STATUS_IFFECTIVE)\n" +
 				"             AS DATA\n" +
-				"     FROM (SELECT M.UUID,\n" +
+				"     FROM (SELECT M.GID,\n" +
 				"                  M.VSL_IMO_NO,\n" +
 				"                  M.VSL_NAME,\n" +
 				"                  M.VOYAGE,\n" +
@@ -802,7 +807,7 @@ public class mt3102 {
 				"                  M.BIZ_STATUS,\n" +
 				"                  M.BIZ_STATUS_DESC,\n" +
 				"                  M.LASTUPDATEDDT,\n" +
-				"                  M.ISDELETED,M.BIZ_STATUS_IFFECTIVE\n" +
+				"                  M.ISDELETED,M.UUID,M.BIZ_STATUS_IFFECTIVE\n" +
 				"             FROM mt3102sub_bill AS M\n" +
 				"            LEFT JOIN oracle_subscribe_papam_dim FOR SYSTEM_TIME AS OF M.LASTUPDATEDDT AS P\n" +
 				"                  ON 'DATA_FLINK_FULL_FLINK_TRACING_MT3102SUB'=P.APP_NAME\n" +
@@ -859,7 +864,7 @@ public class mt3102 {
 				"                                         TABLE_NAME,\n" +
 				"                                         SUBSCRIBE_TYPE,\n" +
 				"                                         DATA)\n" +
-				"   SELECT UUID AS GID,\n" +
+				"   SELECT GID,\n" +
 				"          'DATA_FLINK_FULL_FLINK_TRACING_MT3102SUB_ARV' AS APP_NAME,\n" +
 				"          'DM.TRACK_BIZ_STATUS_CTNR' AS TABLE_NAME,\n" +
 				"          'I' AS SUBSCRIBE_TYPE,\n" +
@@ -878,9 +883,9 @@ public class mt3102 {
 				"               BIZ_STATUS,\n" +
 				"               BIZ_STATUS_DESC,\n" +
 				"               LASTUPDATEDDT,\n" +
-				"               ISDELETED,BIZ_STATUS_IFFECTIVE)\n" +
+				"               ISDELETED,UUID,BIZ_STATUS_IFFECTIVE)\n" +
 				"             AS DATA\n" +
-				"     FROM (SELECT M.UUID,\n" +
+				"     FROM (SELECT M.GID,\n" +
 				"                  M.VSL_IMO_NO,\n" +
 				"                  M.VSL_NAME,\n" +
 				"                  M.VOYAGE,\n" +
@@ -896,7 +901,7 @@ public class mt3102 {
 				"                  M.BIZ_STATUS,\n" +
 				"                  M.BIZ_STATUS_DESC,\n" +
 				"                  M.LASTUPDATEDDT,\n" +
-				"                  M.ISDELETED,M.BIZ_STATUS_IFFECTIVE\n" +
+				"                  M.ISDELETED,M.UUID,M.BIZ_STATUS_IFFECTIVE\n" +
 				"             FROM mt3102subarv_ctn AS M\n" +
 				"            LEFT JOIN oracle_subscribe_papam_dim FOR SYSTEM_TIME AS OF M.LASTUPDATEDDT AS P\n" +
 				"                  ON 'DATA_FLINK_FULL_FLINK_TRACING_MT3102SUB_ARV'=P.APP_NAME\n" +
@@ -955,7 +960,7 @@ public class mt3102 {
 				"                                         TABLE_NAME,\n" +
 				"                                         SUBSCRIBE_TYPE,\n" +
 				"                                         DATA)\n" +
-				"   SELECT UUID AS GID,\n" +
+				"   SELECT GID,\n" +
 				"          'DATA_FLINK_FULL_FLINK_TRACING_MT3102SUB_ARV' AS APP_NAME,\n" +
 				"          'DM.TRACK_BIZ_STATUS_BILL' AS TABLE_NAME,\n" +
 				"          'I' AS SUBSCRIBE_TYPE,\n" +
@@ -975,9 +980,9 @@ public class mt3102 {
 				"               BIZ_STATUS,\n" +
 				"               BIZ_STATUS_DESC,\n" +
 				"               LASTUPDATEDDT,\n" +
-				"               ISDELETED,BIZ_STATUS_IFFECTIVE)\n" +
+				"               ISDELETED,UUID,BIZ_STATUS_IFFECTIVE)\n" +
 				"             AS DATA\n" +
-				"     FROM (SELECT M.UUID,\n" +
+				"     FROM (SELECT M.GID,\n" +
 				"                  M.VSL_IMO_NO,\n" +
 				"                  M.VSL_NAME,\n" +
 				"                  M.VOYAGE,\n" +
@@ -994,7 +999,7 @@ public class mt3102 {
 				"                  M.BIZ_STATUS,\n" +
 				"                  M.BIZ_STATUS_DESC,\n" +
 				"                  M.LASTUPDATEDDT,\n" +
-				"                  M.ISDELETED,M.BIZ_STATUS_IFFECTIVE\n" +
+				"                  M.ISDELETED,M.UUID,M.BIZ_STATUS_IFFECTIVE\n" +
 				"             FROM mt3102subarv_bill AS M\n" +
 				"            LEFT JOIN oracle_subscribe_papam_dim FOR SYSTEM_TIME AS OF M.LASTUPDATEDDT AS P\n" +
 				"                  ON 'DATA_FLINK_FULL_FLINK_TRACING_MT3102SUB_ARV'=P.APP_NAME\n" +
