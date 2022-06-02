@@ -301,7 +301,9 @@ public class departure {
 				"   from TRACK_DEP_INFO as TDI\n" +
 				"left join ORACLE_TRACK_BIZ_STATUS_BILL FOR SYSTEM_TIME AS OF TDI.LASTUPDATEDDT AS dim1\n" +
 				"on dim1.VSL_IMO_NO=TDI.IMO_NO and dim1.VSL_NAME=TDI.VESSELNAME_EN\n" +
-				"where dim1.BIZ_STATUS='已装船' AND dim1.BIZ_STAGE_NAME='装船'");
+				"where dim1.BIZ_STATUS='已装船' AND dim1.BIZ_STAGE_NAME='装船'\n" +
+				"AND (dim1.VOYAGE=TDI.VOYAGE_IN OR dim1.VOYAGE=TDI.VOYAGE_OUT)" +
+				"");
 
 //		Table BILL_INFO = tEnv.sqlQuery("select * from BILL_INFO");
 //		tEnv.toAppendStream(BILL_INFO, Row.class).print();
@@ -367,7 +369,9 @@ public class departure {
 				"   from TRACK_DEP_INFO as TDI\n" +
 				"left join ORACLE_TRACK_BIZ_STATUS_CTNR FOR SYSTEM_TIME AS OF TDI.LASTUPDATEDDT AS dim1\n" +
 				"on dim1.VSL_IMO_NO=TDI.IMO_NO and dim1.VSL_NAME=TDI.VESSELNAME_EN\n" +
-				"where dim1.BIZ_STATUS='已装船' AND dim1.BIZ_STAGE_NAME='装船'");
+				"where dim1.BIZ_STATUS='已装船' AND dim1.BIZ_STAGE_NAME='装船'" +
+				"AND (dim1.VOYAGE=TDI.VOYAGE_IN OR dim1.VOYAGE=TDI.VOYAGE_OUT)" +
+				"");
 		
 //		Table CTNR_INFO = tEnv.sqlQuery("select * from CTNR_INFO");
 //		tEnv.toAppendStream(CTNR_INFO, Row.class).print();
