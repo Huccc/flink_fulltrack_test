@@ -25,7 +25,7 @@ public class mt1101 {
 				"  bizUniqueId STRING,\n" +
 				"  destination STRING,\n" +
 				"  parseData STRING,\n" +
-				"  LASTUPDATEDDT AS PROCTIME()\n" +
+				"  LASTUPDATEDDT AS (PROCTIME() + INTERVAL '8' HOUR)\n" +
 				") WITH (\n" +
 				"  'connector' = 'kafka',\n" +
 				"  'topic' = 'mt1101_test',\n" +
@@ -234,7 +234,7 @@ public class mt1101 {
 				"  uuid() as UUID,\n" +
 				"  if(BIZ_STATUS_CODE='01' and BIZ_STATUS_DESC not like '%删除%', 1, 0) as BIZ_STATUS_IFFECTIVE\n" +
 				"from\n" +
-				"(select mt1101withBill.msgId, mt1101withBill.GID, mt1101withBill.VSL_IMO_NO,\n" +
+				"(select mt1101withBill.msgId, concat(mt1101withBill.GID,',',mt9999withBill.GID) AS GID, mt1101withBill.VSL_IMO_NO,\n" +
 				"  mt1101withBill.VSL_NAME, mt1101withBill.VOYAGE,\n" +
 				"  mt1101withBill.I_E_MARK, 'D6.1' as BIZ_STAGE_NO,\n" +
 				"  'I_cusDecl_mt1101' as BIZ_STAGE_CODE, mt9999withBill.BIZ_TIME,\n" +
@@ -276,8 +276,8 @@ public class mt1101 {
 				"  'N/A' as CTNR_NO\n" +
 				"from Mt1101JoinMt9999WithDimTB where TransportEquipment is null");
 		
-		Table Mt1101JoinMt9999WithDim_ctnrTB = tEnv.sqlQuery("select * from Mt1101JoinMt9999WithDim_ctnrTB");
-		tEnv.toAppendStream(Mt1101JoinMt9999WithDim_ctnrTB, Row.class).print();
+//		Table Mt1101JoinMt9999WithDim_ctnrTB = tEnv.sqlQuery("select * from Mt1101JoinMt9999WithDim_ctnrTB");
+//		tEnv.toAppendStream(Mt1101JoinMt9999WithDim_ctnrTB, Row.class).print();
 //		env.execute();
 		
 		// TODO 结果表：箱单关系表
@@ -309,8 +309,8 @@ public class mt1101 {
 				"from mt9999WB_standerImoName\n" +
 				"where BIZ_STAGE_NO<>'N/A' and BIZ_STAGE_CODE<>'N/A'");
 		
-		Table D6_1_and_D6a_3_BillTB = tEnv.sqlQuery("select * from D6_1_and_D6a_3_BillTB");
-		tEnv.toAppendStream(D6_1_and_D6a_3_BillTB, Row.class).print();
+//		Table D6_1_and_D6a_3_BillTB = tEnv.sqlQuery("select * from D6_1_and_D6a_3_BillTB");
+//		tEnv.toAppendStream(D6_1_and_D6a_3_BillTB, Row.class).print();
 //		env.execute();
 		
 		// TODO Oracle sink表，提单表
@@ -476,6 +476,41 @@ public class mt1101 {
 				"    'password' = 'easipass'\n" +
 				")");
 		
+		// TODO 箱单关系表只更新isdelete,箱号=N/A
+		tEnv.executeSql("" +
+				"CREATE TABLE oracle_track_biz_blctnr_3_b (\n" +
+				"  VSL_IMO_NO STRING,\n" +
+				"  VOYAGE STRING,\n" +
+				"  BL_NO STRING,\n" +
+				"  ISDELETED DECIMAL(1),\n" +
+				"  PRIMARY KEY(VSL_IMO_NO, VOYAGE, BL_NO) NOT ENFORCED\n" +
+				") WITH (\n" +
+				"'connector' = 'jdbc',\n" +
+				"  'url' = 'jdbc:oracle:thin:@192.168.129.149:1521:test12c',\n" +
+				"  'table-name' = 'DM.TRACK_BIZ_BLCTNR',\n" +
+				"  'driver' = 'oracle.jdbc.OracleDriver',\n" +
+				"  'username' = 'dm',\n" +
+				"  'password' = 'easipass'\n" +
+				"  )");
+		
+		// TODO 箱单关系表只更新isdelete，箱号!=n/A
+		tEnv.executeSql("" +
+				"CREATE TABLE oracle_track_biz_blctnr_3_bc (\n" +
+				"  VSL_IMO_NO STRING,\n" +
+				"  VOYAGE STRING,\n" +
+				"  BL_NO STRING,\n" +
+				"  CTNR_NO STRING,\n" +
+				"  ISDELETED DECIMAL(1),\n" +
+				"  PRIMARY KEY(VSL_IMO_NO, VOYAGE, BL_NO, CTNR_NO) NOT ENFORCED\n" +
+				") WITH (\n" +
+				"'connector' = 'jdbc',\n" +
+				"  'url' = 'jdbc:oracle:thin:@192.168.129.149:1521:test12c',\n" +
+				"  'table-name' = 'DM.TRACK_BIZ_BLCTNR',\n" +
+				"  'driver' = 'oracle.jdbc.OracleDriver',\n" +
+				"  'username' = 'dm',\n" +
+				"  'password' = 'easipass'\n" +
+				"  )");
+		
 		// TODO SINK
 		StatementSet statementSet = tEnv.createStatementSet();
 		
@@ -555,10 +590,91 @@ public class mt1101 {
 				"and 'DM.TRACK_BIZ_STATUS_BILL'=ospd2.TABLE_NAME\n" +
 				"where ospd2.ISCURRENT=1 and d2.BIZ_TIME is not null) as temp2");
 		
-//		statementSet.addInsertSql("" +
-//				"");
-//		statementSet.addInsertSql("" +
-//				"");
+		
+		// TODO 箱单关系表
+		// TODO 9，不限制回执生成时间
+		statementSet.addInsertSql("" +
+				"insert into oracle_track_biz_blctnr \n" +
+				"select \n" +
+				"  blctnrTB.VSL_IMO_NO,blctnrTB.VSL_NAME,blctnrTB.VOYAGE,blctnrTB.ACCURATE_IMONO,\n" +
+				"  blctnrTB.ACCURATE_VSLNAME,blctnrTB.BL_NO,blctnrTB.MASTER_BL_NO,blctnrTB.CTNR_NO,\n" +
+				"  blctnrTB.I_E_MARK,blctnrTB.MESSAGE_ID,blctnrTB.SENDER_CODE,blctnrTB.BULK_FLAG,\n" +
+				"  blctnrTB.RSP_CREATE_TIME,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,blctnrTB.ISDELETED\n" +
+				"from blctnrTB left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF blctnrTB.LASTUPDATEDDT as obcd\n" +
+				"on blctnrTB.VSL_IMO_NO=obcd.VSL_IMO_NO\n" +
+				"and blctnrTB.VOYAGE=obcd.VOYAGE\n" +
+				"and blctnrTB.BL_NO=obcd.BL_NO\n" +
+				"and blctnrTB.CTNR_NO=obcd.CTNR_NO\n" +
+				"where (obcd.RSP_CREATE_TIME is null or blctnrTB.RSP_CREATE_TIME>obcd.RSP_CREATE_TIME)\n" +
+				"and blctnrTB.FunctionCode='9'");
+		
+		// TODO 箱单关系表
+		// TODO 0,5，不限制回执生成时间
+		statementSet.addInsertSql("" +
+				"insert into oracle_track_biz_blctnr \n" +
+				"select \n" +
+				"  blctnrTB.VSL_IMO_NO,blctnrTB.VSL_NAME,blctnrTB.VOYAGE,blctnrTB.ACCURATE_IMONO,\n" +
+				"  blctnrTB.ACCURATE_VSLNAME,blctnrTB.BL_NO,blctnrTB.MASTER_BL_NO,blctnrTB.CTNR_NO,\n" +
+				"  blctnrTB.I_E_MARK,blctnrTB.MESSAGE_ID,blctnrTB.SENDER_CODE,blctnrTB.BULK_FLAG,\n" +
+				"  blctnrTB.RSP_CREATE_TIME,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,blctnrTB.ISDELETED\n" +
+				"from blctnrTB left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF blctnrTB.LASTUPDATEDDT as obcd1\n" +
+				"on blctnrTB.VSL_IMO_NO=obcd1.VSL_IMO_NO\n" +
+				"and blctnrTB.VOYAGE=obcd1.VOYAGE\n" +
+				"and blctnrTB.BL_NO=obcd1.BL_NO\n" +
+				"and blctnrTB.CTNR_NO=obcd1.CTNR_NO\n" +
+				"where (obcd1.RSP_CREATE_TIME is null or blctnrTB.RSP_CREATE_TIME>obcd1.RSP_CREATE_TIME)\n" +
+				"and blctnrTB.CTNR_NO <> 'N/A' and (blctnrTB.FunctionCode='0' or blctnrTB.FunctionCode='5')");
+		
+		// TODO 箱单关系表
+		// TODO 3 匹配4个业务主键作插入，箱号不做过滤，不限制回执生成时间
+		statementSet.addInsertSql("" +
+				"insert into oracle_track_biz_blctnr\n" +
+				"  select\n" +
+				"  blctnrTB.VSL_IMO_NO,blctnrTB.VSL_NAME,blctnrTB.VOYAGE,blctnrTB.ACCURATE_IMONO,\n" +
+				"  blctnrTB.ACCURATE_VSLNAME,blctnrTB.BL_NO,blctnrTB.MASTER_BL_NO,blctnrTB.CTNR_NO,\n" +
+				"  blctnrTB.I_E_MARK,blctnrTB.MESSAGE_ID,blctnrTB.SENDER_CODE,blctnrTB.BULK_FLAG,\n" +
+				"  blctnrTB.RSP_CREATE_TIME,cast(LOCALTIMESTAMP as TIMESTAMP(3)) as LASTUPDATEDDT,blctnrTB.ISDELETED\n" +
+				"from blctnrTB left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF blctnrTB.LASTUPDATEDDT as obcd2\n" +
+				"  on blctnrTB.VSL_IMO_NO=obcd2.VSL_IMO_NO\n" +
+				"  and blctnrTB.VOYAGE=obcd2.VOYAGE\n" +
+				"  and blctnrTB.BL_NO=obcd2.BL_NO\n" +
+				"  and blctnrTB.CTNR_NO=obcd2.CTNR_NO\n" +
+				"where obcd2.RSP_CREATE_TIME is null\n" +
+				"  and blctnrTB.FunctionCode='3'");
+		
+		// TODO 箱单关系表
+		// TODO 3 匹配3个业务主键,箱号为空作更新
+		statementSet.addInsertSql("" +
+				"insert into oracle_track_biz_blctnr_3_b\n" +
+				"select \n" +
+				"  blctnrTB.VSL_IMO_NO,blctnrTB.VOYAGE,\n" +
+				"  blctnrTB.BL_NO,blctnrTB.ISDELETED\n" +
+				"from blctnrTB left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF blctnrTB.LASTUPDATEDDT as obcd3\n" +
+				"  on blctnrTB.VSL_IMO_NO=obcd3.VSL_IMO_NO\n" +
+				"  and blctnrTB.VOYAGE=obcd3.VOYAGE\n" +
+				"  and blctnrTB.BL_NO=obcd3.BL_NO\n" +
+				"where obcd3.RSP_CREATE_TIME is not null\n" +
+				"  and blctnrTB.RSP_CREATE_TIME>obcd3.RSP_CREATE_TIME\n" +
+				"  and blctnrTB.CTNR_NO = 'N/A'\n" +
+				"  and blctnrTB.FunctionCode='3'");
+		
+		// TODO 箱单关系表
+		// TODO 3 匹配4个业务主键,箱号不为空作更新
+		statementSet.addInsertSql("" +
+				"insert into oracle_track_biz_blctnr_3_bc\n" +
+				"select \n" +
+				"  blctnrTB.VSL_IMO_NO,blctnrTB.VOYAGE,\n" +
+				"  blctnrTB.BL_NO,blctnrTB.CTNR_NO,\n" +
+				"  blctnrTB.ISDELETED\n" +
+				"from blctnrTB left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF blctnrTB.LASTUPDATEDDT as obcd4\n" +
+				"  on blctnrTB.VSL_IMO_NO=obcd4.VSL_IMO_NO\n" +
+				"  and blctnrTB.VOYAGE=obcd4.VOYAGE\n" +
+				"  and blctnrTB.BL_NO=obcd4.BL_NO\n" +
+				"  and blctnrTB.CTNR_NO=obcd4.CTNR_NO\n" +
+				"where obcd4.RSP_CREATE_TIME is not null\n" +
+				"  and blctnrTB.RSP_CREATE_TIME>obcd4.RSP_CREATE_TIME\n" +
+				"  and blctnrTB.CTNR_NO <> 'N/A'\n" +
+				"  and blctnrTB.FunctionCode='3'");
 		
 		statementSet.execute();
 	}

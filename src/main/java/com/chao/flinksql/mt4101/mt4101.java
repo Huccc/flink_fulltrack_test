@@ -115,7 +115,7 @@ public class mt4101 {
 				"create view source9999TB as\n" +
 				"select\n" +
 				"  msgId, LASTUPDATEDDT,\n" +
-				"  parseMT4101fromMT9999(parseData) as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+				"  parseMT4101fromMT9999(parseData) as pData//\n" +
 				"from kafka_source_data where bizId='MT9999' and msgType='message_data'");
 		
 		Table source9999TB_table = tEnv.sqlQuery("select * from source9999TB");

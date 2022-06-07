@@ -115,6 +115,33 @@
         </dependency>
         <dependency>
             <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-deccus001</artifactId>
+            <version>1.11.1.15-SNAPSHOT</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-deccus001-1.11.1.15-SNAPSHOT.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-mt3101</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-mt3101-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-sql-submit</artifactId>
+            <version>1.11.1.5</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-sql-submit-1.11.1.5.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
             <artifactId>ep-flink-table-function-json-to-row-in-mt5102</artifactId>
             <version>1.11.1.14</version>
             <scope>system</scope>
@@ -150,11 +177,29 @@
         </dependency>
         <dependency>
             <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-decedi001</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-decedi001-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
             <artifactId>ep-flink-table-function-json-to-row-in-mt1101</artifactId>
             <version>1.11.1.14</version>
             <scope>system</scope>
             <systemPath>
                 ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-mt1101-1.11.1.14.jar
+            </systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.easipass.flink</groupId>
+            <artifactId>ep-flink-table-function-json-to-row-in-mt2101</artifactId>
+            <version>1.11.1.14</version>
+            <scope>system</scope>
+            <systemPath>
+                ${project.basedir}/src/main/resources/lib/ep-flink-table-function-json-to-row-in-mt2101-1.11.1.14.jar
             </systemPath>
         </dependency>
         <dependency>

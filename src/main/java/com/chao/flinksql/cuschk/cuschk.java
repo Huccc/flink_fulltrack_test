@@ -304,7 +304,20 @@ public class cuschk {
 //                "  `proctime`\n" +
 //                "FROM KAFKA_DATA_XPQ_DB_PARSE_RESULT\n" +
 //                "WHERE bizId = 'ogg_data' AND destination = 'SRC_XIB3.EDI_CUSCHK_BILLINFO'\n");
-
+	
+	    tEnv.executeSql("" +
+			    "CREATE VIEW TMP_BILL_INFO1 AS\n" +
+			    "SELECT\n" +
+			    "  regexp_replace(regexp_replace(regexp_replace(parseData, '\"', ''), '\\{', ''), '\\}', '') AS `map1`,\n" +
+			    "  parseData AS `map2`,\n" +
+			    "  `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+			    "FROM KAFKA_DATA_XPQ_DB_PARSE_RESULT\n" +
+			    "WHERE bizId = 'ogg_data' AND destination = 'SRC_XIB3.EDI_CUSCHK_BILLINFO'\n");
+	
+	    Table TMP_BILL_INFO_table1 = tEnv.sqlQuery("select * from TMP_BILL_INFO1");
+	    tEnv.toAppendStream(TMP_BILL_INFO_table1, Row.class).print();
+	    env.execute();
+		
         tEnv.executeSql("" +
                 "CREATE VIEW TMP_BILL_INFO (\n" +
                 "  `map`,\n" +
@@ -317,9 +330,9 @@ public class cuschk {
                 "WHERE bizId = 'ogg_data' AND destination = 'SRC_XIB3.EDI_CUSCHK_BILLINFO'\n");
 
 //        System.out.println("TMP_BILL_INFO");
-//        Table TMP_BILL_INFO_table = tEnv.sqlQuery("select * from TMP_BILL_INFO");
-//        tEnv.toAppendStream(TMP_BILL_INFO_table, Row.class).print();
-//        env.execute();
+        Table TMP_BILL_INFO_table = tEnv.sqlQuery("select * from TMP_BILL_INFO");
+        tEnv.toAppendStream(TMP_BILL_INFO_table, Row.class).print();
+        env.execute();
 
         tEnv.executeSql("" +
                 "CREATE VIEW BILL_INFO(\n" +
@@ -376,10 +389,24 @@ public class cuschk {
 //        Table BILL_INFO_table = tEnv.sqlQuery("select * from BILL_INFO");
 //        tEnv.toAppendStream(BILL_INFO_table, Row.class).print();
 //        env.execute();
-
-        tEnv.executeSql("" +
+	
+	
+	    tEnv.executeSql("" +
+			    "CREATE VIEW BILL AS\n" +
+			    "SELECT \n" +
+			    "  IF(dim_ship1.`value` <> '', dim_ship1.`value`, 'N/A') AS VSL_IMO_NO,\n" +
+			    "  IF(VSLNAME <> '', UPPER(TRIM(REGEXP_REPLACE(VSLNAME, '[\\t\\n\\r]', ''))), 'N/A') AS VSL_NAME\n" +
+			    "FROM BILL_INFO AS BI \n" +
+			    "LEFT JOIN REDIS_DIM FOR SYSTEM_TIME AS OF BI.`proctime` AS dim_ship1 \n" +
+			    "ON dim_ship1.key = CONCAT('BDCP:DIM:DIM_SHIP:VSL_NAME_EN=', UPPER(TRIM(REGEXP_REPLACE(BI.VSLNAME, '[\\t\\n\\r]', '')))) AND dim_ship1.field = 'IMO_NO'\n");
+	
+	    Table bill_table = tEnv.sqlQuery("select * from BILL");
+	    tEnv.toAppendStream(bill_table, Row.class).print();
+	    env.execute();
+	
+	    tEnv.executeSql("" +
                 "CREATE VIEW BILL ( \n" +
-                "                  UUID,GID, \n" +
+                "                  UUID, GID,\n" +
                 "                  MSGLOGID, -- 用于和 “箱” 关联 \n" +
                 "                  BL_NO, \n" +
                 "                  MASTER_BL_NO, \n" +
@@ -402,8 +429,8 @@ public class cuschk {
                 "                  `proctime` \n" +
                 "                ) AS \n" +
                 "                SELECT \n" +
-                "                  uuid() AS UUID,GID, \n" +
-                "                  MSGLOGID, \n" +
+                "                  uuid() AS UUID, GID,\n" +
+                "                  MSGLOGID,\n" +
                 "                  IF(BLNO <> '', TRIM(REGEXP_REPLACE(BLNO, '[\\t\\n\\r]', '')), 'N/A') AS BL_NO,\n" +
                 "                  'N/A' AS MASTER_BL_NO, \n" +
                 "                  IF(dim_ship1.`value` <> '', dim_ship1.`value`, 'N/A') AS VSL_IMO_NO, -- 同 ACCURATE_IMONO \n" +
@@ -436,12 +463,12 @@ public class cuschk {
                 "                        CASE IEFLAG WHEN 'E' THEN 'E_cusDecl_chk' WHEN 'I' THEN 'I_cusDecl_chk' ELSE 'N/A' END \n" +
                 "                    ) AND dim_biz_stage.field = 'SUB_STAGE_NAME' \n" +
                 "                  LEFT JOIN REDIS_DIM FOR SYSTEM_TIME AS OF BI.`proctime` AS dim_common_mini \n" +
-                "                    ON dim_common_mini.key = CONCAT('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=cus_check_result&TYPE_CODE=', IF(BI.FREEFLAG <> '' , BI.FREEFLAG, 'C')) \n" +
+                "                    ON dim_common_mini.key = CONCAT('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=cus_check_result&TYPE_CODE=', case FREEFLAG when '' then 'C' when 'null' then 'C' else FREEFLAG END) \n" +
                 "                    AND dim_common_mini.field = 'TYPE_NAME'");
 
-//        Table bill_table = tEnv.sqlQuery("select * from BILL");
-//        tEnv.toAppendStream(bill_table, Row.class).print();
-//        env.execute();
+        Table BILL = tEnv.sqlQuery("select * from BILL");
+        tEnv.toAppendStream(BILL, Row.class).print();
+        env.execute();
 
         // TODO 箱表
         tEnv.executeSql("" +
@@ -528,9 +555,10 @@ public class cuschk {
 
         Table ctnr_table = tEnv.sqlQuery("select * from CTNR");
         tEnv.toAppendStream(ctnr_table, Row.class).print();
-        env.execute();
+//        env.execute();
 
         StatementSet statementSet = tEnv.createStatementSet();
+        
         // TODO 提单状态表写入到oracle
         statementSet.addInsertSql("" +
                 "INSERT INTO ORACLE_TRACK_BIZ_STATUS_BILL (\n" +
@@ -582,6 +610,8 @@ public class cuschk {
                 " and BILL.BIZ_STATUS_CODE=obd.BIZ_STATUS_CODE\n" +
                 "where (obd.BIZ_TIME is null or BILL.BIZ_TIME>obd.BIZ_TIME)\n" +
                 " and BILL.BIZ_TIME is not null");
+        
+        statementSet.execute();
 
         // TODO 提单状态表写入Kafka
         statementSet.addInsertSql("" +

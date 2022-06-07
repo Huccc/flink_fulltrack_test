@@ -401,7 +401,7 @@ public class coarri_container {
 
 		Table billFromCtnr_table = tEnv.sqlQuery("select * from billFromCtnr");
 		tEnv.toAppendStream(billFromCtnr_table, Row.class).print();
-//		env.execute();
+		env.execute();
 		
 		// TODO 关联箱单关系表取分提单号
 		tEnv.executeSql("" +
@@ -417,9 +417,9 @@ public class coarri_container {
 				"  and billFromCtnr.BL_NO=obcd.MASTER_BL_NO\n" +
 				"where obcd.BL_NO<>'N/A' and obcd.BL_NO is not null  --过滤掉不是分提单的情况\n" +
 				"  and obcd.MASTER_BL_NO<>'N/A'");
-
+		
 		Table billwithblctnr_table = tEnv.sqlQuery("select * from billwithblctnr");
-		tEnv.toAppendStream(billwithblctnr_table,Row.class).print();
+		tEnv.toAppendStream(billwithblctnr_table, Row.class).print();
 //		env.execute();
 		
 		StatementSet statementSet = tEnv.createStatementSet();

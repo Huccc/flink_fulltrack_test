@@ -206,7 +206,7 @@ public class mt2101 {
 		tEnv.executeSql("CREATE VIEW MT2101 AS\n" +
 				"SELECT\n" +
 				"  `UDF.JSON_TO_ROW_IN_MT2101`(parseData) AS Manifest,\n" +
-				"  `proctime`, uuid() as UUID\n" +
+				"  `proctime`, uuid() as UUID,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"FROM `KAFKA.DATA_XPQ_MSG_PARSE_RESULT`\n" +
 				"WHERE msgType = 'message_data' AND bizId = 'MT2101'" +
 				"");
@@ -220,7 +220,7 @@ public class mt2101 {
 				"FROM (\n" +
 				"  SELECT\n" +
 				"    `UDF.JSON_TO_ROW_IN_MT9999`(parseData) AS Manifest,\n" +
-				"    `proctime`\n" +
+				"    `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"  FROM `KAFKA.DATA_XPQ_MSG_PARSE_RESULT`\n" +
 				"  WHERE msgType = 'message_data' AND bizId = 'MT9999'\n" +
 				") -- MT9999 中过滤出 MT2101 的回执，尽早过滤以减少状态大小\n" +
@@ -232,6 +232,7 @@ public class mt2101 {
 		tEnv.executeSql("" +
 				"CREATE VIEW BILL_CONSIGNMENT_IN_MT2101 AS\n" +
 				"SELECT\n" +
+				"  M2.GID,\n" +
 				"  IF(M2.Manifest.Head.MessageID <> '', M2.Manifest.Head.MessageID, 'N/A') AS _MESSAGE_ID,\n" +
 				"  IF(M2.Manifest.Declaration.BorderTransportMeans.ID <> '',\n" +
 				"    REPLACE(UPPER(TRIM(REGEXP_REPLACE(M2.Manifest.Declaration.BorderTransportMeans.ID, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') AS VSL_IMO_NO,\n" +
@@ -265,6 +266,7 @@ public class mt2101 {
 		tEnv.executeSql("" +
 				"CREATE VIEW BILL_CONSIGNMENT_IN_MT9999 AS\n" +
 				"SELECT\n" +
+				"  M9.GID,\n" +
 				"  IF(M9.Manifest.Head.MessageID <> '', M9.Manifest.Head.MessageID, 'N/A') AS _MESSAGE_ID,\n" +
 				"  IF(M9.Manifest.Response.BorderTransportMeans.ID <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(M9.Manifest.Response.BorderTransportMeans.ID, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') AS VSL_IMO_NO,\n" +
 				"  IF(M9.Manifest.Response.BorderTransportMeans.JourneyID <> '', UPPER(TRIM(REGEXP_REPLACE(M9.Manifest.Response.BorderTransportMeans.JourneyID, '[\\t\\n\\r]', ''))), 'N/A') AS VOYAGE,\n" +
@@ -285,6 +287,7 @@ public class mt2101 {
 		tEnv.executeSql("" +
 				"CREATE VIEW BILL_WITHOUT_DIM AS\n" +
 				"SELECT\n" +
+				"  concat(C2.GID,',',C9.GID) as GID,\n" +
 				"  C2.VSL_IMO_NO AS VSL_IMO_NO,\n" +
 				"  C2.VSL_NAME AS VSL_NAME,\n" +
 				"  C2.VOYAGE AS VOYAGE,\n" +
@@ -320,6 +323,7 @@ public class mt2101 {
 		tEnv.executeSql("" +
 				"CREATE VIEW BILL AS\n" +
 				"SELECT\n" +
+				"  GID,\n" +
 				"  VSL_IMO_NO,    -- PK\n" +
 				"  VSL_NAME,\n" +
 				"  VOYAGE,        -- PK\n" +
@@ -364,6 +368,7 @@ public class mt2101 {
 				"CREATE VIEW BL_CTNR_WITHOUT_DIM AS\n" +
 				"(\n" +
 				"SELECT\n" +
+				"  GID,\n" +
 				"  VSL_IMO_NO,    -- PK\n" +
 				"  VSL_NAME,\n" +
 				"  VOYAGE,\n" +
@@ -396,6 +401,7 @@ public class mt2101 {
 				"UNION ALL\n" +
 				"(\n" +
 				"SELECT\n" +
+				"  GID,\n" +
 				"  VSL_IMO_NO,\n" +
 				"  VSL_NAME,\n" +
 				"  VOYAGE,\n" +
@@ -432,6 +438,7 @@ public class mt2101 {
 		tEnv.executeSql("" +
 				"CREATE VIEW CTNR AS\n" +
 				"SELECT\n" +
+				"  GID,\n" +
 				"  VSL_IMO_NO,    -- PK\n" +
 				"  VSL_NAME,\n" +
 				"  VOYAGE,        -- PK\n" +
@@ -478,7 +485,7 @@ public class mt2101 {
 		statementSet.addInsertSql("" +
 				"INSERT INTO `KAFKA.TRACK_BIZ_STATUS_BILL_FOR_C71` (GID, APP_NAME, TABLE_NAME, SUBSCRIBE_TYPE, DATA)\n" +
 				"SELECT\n" +
-				"  UUID as GID,\n" +
+				"  GID,\n" +
 				"  APP_NAME,\n" +
 				"  TABLE_NAME,\n" +
 				"  SUBSCRIBE_TYPE,\n" +
@@ -489,6 +496,7 @@ public class mt2101 {
 				"    P.TABLE_NAME AS TABLE_NAME,\n" +
 				"    P.SUBSCRIBE_TYPE AS SUBSCRIBE_TYPE,\n" +
 				"    -- DATA --\n" +
+				"    B.GID AS GID,\n" +
 				"    B.VSL_IMO_NO AS VSL_IMO_NO,\n" +
 				"    B.VSL_NAME AS VSL_NAME,\n" +
 				"    B.VOYAGE AS VOYAGE,\n" +
@@ -544,13 +552,13 @@ public class mt2101 {
 		statementSet.addInsertSql("" +
 				"INSERT INTO `KAFKA.TRACK_BIZ_STATUS_CTNR_FOR_C71` (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
 				"SELECT\n" +
-				"  UUID as GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,\n" +
+				"  GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,\n" +
 				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) AS DATA\n" +
 				"FROM (\n" +
 				"  SELECT\n" +
 				"    P.APP_NAME AS APP_NAME,P.TABLE_NAME AS TABLE_NAME,P.SUBSCRIBE_TYPE AS SUBSCRIBE_TYPE,\n" +
 				"    -- DATA --\n" +
-				"    C.VSL_IMO_NO,C.VSL_NAME,C.VOYAGE,C.ACCURATE_IMONO,C.ACCURATE_VSLNAME,C.CTNR_NO,C.I_E_MARK,C.BIZ_STAGE_NO,C.BIZ_STAGE_CODE,C.BIZ_STAGE_NAME,C.BIZ_TIME,C.BIZ_STATUS_CODE,C.BIZ_STATUS,C.BIZ_STATUS_DESC,C.LASTUPDATEDDT AS LASTUPDATEDDT,CAST(C.ISDELETED AS INT) AS ISDELETED, UUID, BIZ_STATUS_IFFECTIVE\n" +
+				"    C.GID,C.VSL_IMO_NO,C.VSL_NAME,C.VOYAGE,C.ACCURATE_IMONO,C.ACCURATE_VSLNAME,C.CTNR_NO,C.I_E_MARK,C.BIZ_STAGE_NO,C.BIZ_STAGE_CODE,C.BIZ_STAGE_NAME,C.BIZ_TIME,C.BIZ_STATUS_CODE,C.BIZ_STATUS,C.BIZ_STATUS_DESC,C.LASTUPDATEDDT AS LASTUPDATEDDT,CAST(C.ISDELETED AS INT) AS ISDELETED, UUID, BIZ_STATUS_IFFECTIVE\n" +
 				"  FROM CTNR AS C\n" +
 				"    LEFT JOIN `ORACLE.ADM_BDPP_SUBSCRIBE_PARAM` FOR SYSTEM_TIME AS OF C.`proctime` AS P\n" +
 				"      ON P.APP_NAME = 'DATA_FLINK_FULL_FLINK_TRACING_MT2101' AND P.TABLE_NAME = 'DM.TRACK_BIZ_STATUS_CTNR'\n" +

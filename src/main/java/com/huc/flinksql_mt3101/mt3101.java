@@ -164,7 +164,7 @@ public class mt3101 {
 				"CREATE VIEW MT3101 AS\n" +
 				"  SELECT\n" +
 				"  mt3101_JSON_TO_ROW_IN_MT3101(parseData) AS Manifest,\n" +
-				"  LASTUPDATEDDT\n" +
+				"  LASTUPDATEDDT,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"  FROM DATA_XPQ_MSG_PARSE_RESULT\n" +
 				"  WHERE msgType = 'message_data' AND bizId = 'MT3101'");
 		
@@ -176,7 +176,7 @@ public class mt3101 {
 				"CREATE VIEW MT9999 AS\n" +
 				"  SELECT\n" +
 				"  mt3101_JSON_TO_ROW_IN_MT9999(parseData) AS Manifest,\n" +
-				"  LASTUPDATEDDT\n" +
+				"  LASTUPDATEDDT,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"  FROM DATA_XPQ_MSG_PARSE_RESULT\n" +
 				"  WHERE msgType = 'message_data' AND bizId = 'MT9999'");
 		
@@ -187,6 +187,7 @@ public class mt3101 {
 		tEnv.executeSql("" +
 				"CREATE VIEW MT3101consignment_TransportEquipment AS\n" +
 				"select\n" +
+				"  GID,\n" +
 				"  Manifest.Head.MessageID as MessageID,\n" +
 				"  Manifest.Head.FunctionCode as FunctionCode,\n" +
 				"  Manifest.Head.SendTime as SendTime,\n" +
@@ -206,14 +207,14 @@ public class mt3101 {
 		tEnv.executeSql("" +
 				"create view mt3101ConsignmentTable as\n" +
 				"select\n" +
-				"  MessageID, FunctionCode, SendTime,\n" +
+				"  GID, MessageID, FunctionCode, SendTime,\n" +
 				"  BorderTransportMeans_JourneyID, BorderTransportMeans_ID,\n" +
 				"  BorderTransportMeans_Name, UnloadingLocation_ArrivalDate,\n" +
 				"  if(TransportContractDocument.ID <> '', UPPER(TRIM(REGEXP_REPLACE(TransportContractDocument.ID, '[\\t\\n\\r]', ''))), 'N/A') as TransportContractDocument_ID, \n" +
 				"  if(AssociatedTransportDocument.ID <> '', UPPER(TRIM(REGEXP_REPLACE(AssociatedTransportDocument.ID, '[\\t\\n\\r]', ''))), 'N/A') as AssociatedTransportDocument_ID, \n" +
 				"  LASTUPDATEDDT,UUID\n" +
 				"from (select \n" +
-				"        MessageID,FunctionCode,SendTime,BorderTransportMeans_JourneyID,BorderTransportMeans_ID,\n" +
+				"        GID,MessageID,FunctionCode,SendTime,BorderTransportMeans_JourneyID,BorderTransportMeans_ID,\n" +
 				"        BorderTransportMeans_Name,UnloadingLocation_ArrivalDate,Consignment,LASTUPDATEDDT,UUID\n" +
 				"      from MT3101consignment_TransportEquipment where Consignment is not null) as m3c \n" +
 				"CROSS JOIN UNNEST(Consignment) AS Consignment(TransportContractDocument, AssociatedTransportDocument,ConsignmentPackaging, TotalGrossMassMeasure, ConsignmentItem)");
@@ -225,10 +226,10 @@ public class mt3101 {
 		tEnv.executeSql("" +
 				"create view mt3101TransportEquipmentTable as\n" +
 				"select\n" +
-				"  MessageID, FunctionCode, SendTime, BorderTransportMeans_JourneyID, BorderTransportMeans_ID,\n" +
+				"  GID, MessageID, FunctionCode, SendTime, BorderTransportMeans_JourneyID, BorderTransportMeans_ID,\n" +
 				"  BorderTransportMeans_Name, UnloadingLocation_ArrivalDate, LASTUPDATEDDT,\n" +
 				"  if(EquipmentIdentification.ID <> '', UPPER(TRIM(REGEXP_REPLACE(EquipmentIdentification.ID, '[\\t\\n\\r]', ''))), 'N/A') as EquipmentIdentification_ID,  UUID\n" +
-				"from (select MessageID,FunctionCode,SendTime,BorderTransportMeans_JourneyID,BorderTransportMeans_ID,BorderTransportMeans_Name,UnloadingLocation_ArrivalDate,TransportEquipment,LASTUPDATEDDT,UUID \n" +
+				"from (select GID,MessageID,FunctionCode,SendTime,BorderTransportMeans_JourneyID,BorderTransportMeans_ID,BorderTransportMeans_Name,UnloadingLocation_ArrivalDate,TransportEquipment,LASTUPDATEDDT,UUID \n" +
 				"      from MT3101consignment_TransportEquipment where TransportEquipment is not null) as m3t \n" +
 				"CROSS JOIN UNNEST(TransportEquipment) AS TransportEquipment(EquipmentIdentification,CharacteristicCode,FullnessCode,SealID)");
 		
@@ -239,6 +240,7 @@ public class mt3101 {
 		tEnv.executeSql("" +
 				"create view MT9999consignment_TransportEquipment as\n" +
 				"select\n" +
+				"  GID,\n" +
 				"  Manifest.Head.MessageID as MessageID,\n" +
 				"  Manifest.Head.FunctionCode as FunctionCode,\n" +
 				"  Manifest.Head.SendTime as SendTime,\n" +
@@ -256,11 +258,11 @@ public class mt3101 {
 		tEnv.executeSql("" +
 				"create view mt9999ConsignmentTable as\n" +
 				"select\n" +
-				"  MessageID, FunctionCode, SendTime, BorderTransportMeans_ID, BorderTransportMeans_JourneyID,\n" +
+				"  GID, MessageID, FunctionCode, SendTime, BorderTransportMeans_ID, BorderTransportMeans_JourneyID,\n" +
 				"  if(TransportContractDocument.ID <> '', UPPER(TRIM(REGEXP_REPLACE(TransportContractDocument.ID, '[\\t\\n\\r]', ''))), 'N/A') as TransportContractDocument_ID,\n" +
 				"  if(AssociatedTransportDocument.ID <> '', UPPER(TRIM(REGEXP_REPLACE(AssociatedTransportDocument.ID, '[\\t\\n\\r]', ''))), 'N/A') as AssociatedTransportDocument_ID,\n" +
 				"  ResponseType, LASTUPDATEDDT,UUID\n" +
-				"from (select MessageID,FunctionCode,SendTime,BorderTransportMeans_ID,BorderTransportMeans_JourneyID,\n" +
+				"from (select GID,MessageID,FunctionCode,SendTime,BorderTransportMeans_ID,BorderTransportMeans_JourneyID,\n" +
 				"  Consignment,LASTUPDATEDDT,UUID from MT9999consignment_TransportEquipment where Consignment is not null) as m9c \n" +
 				"CROSS JOIN UNNEST(Consignment) AS Consignment(TransportContractDocument,AssociatedTransportDocument,ResponseType)");
 		
@@ -271,10 +273,10 @@ public class mt3101 {
 		tEnv.executeSql("" +
 				"create view mt9999TransportEquipmentTable as\n" +
 				"select\n" +
-				"  MessageID, FunctionCode, SendTime, BorderTransportMeans_ID,\n" +
+				"  GID, MessageID, FunctionCode, SendTime, BorderTransportMeans_ID,\n" +
 				"  BorderTransportMeans_JourneyID,ResponseType, LASTUPDATEDDT,\n" +
 				"   if(EquipmentIdentification.ID <> '', UPPER(TRIM(REGEXP_REPLACE(EquipmentIdentification.ID, '[\\t\\n\\r]', ''))), 'N/A') as EquipmentIdentification_ID,  UUID\n" +
-				"from (select MessageID,FunctionCode,SendTime,BorderTransportMeans_ID,BorderTransportMeans_JourneyID,TransportEquipment,LASTUPDATEDDT,UUID \n" +
+				"from (select GID,MessageID,FunctionCode,SendTime,BorderTransportMeans_ID,BorderTransportMeans_JourneyID,TransportEquipment,LASTUPDATEDDT,UUID \n" +
 				"      from MT9999consignment_TransportEquipment where TransportEquipment is not null) as m9t \n" +
 				"CROSS JOIN UNNEST(TransportEquipment) AS TransportEquipment(EquipmentIdentification,ResponseType)");
 		
@@ -291,6 +293,7 @@ public class mt3101 {
 				"  if(d4.res <> '', d4.res, 'N/A') as BIZ_STATUS --业务状态\n" +
 				"from\n" +
 				"  (select\n" +
+				"    concat(m3.GID,',',m9.GID) as GID,\n" +
 				"    m3.BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO编号\n" +
 				"    m3.BorderTransportMeans_Name as VSL_NAME, --船名\n" +
 				"    m3.BorderTransportMeans_JourneyID as VOYAGE, --航次\n" +
@@ -333,6 +336,7 @@ public class mt3101 {
 				"  if(d4.res <> '', d4.res, 'N/A') as BIZ_STATUS --业务状态\n" +
 				"from\n" +
 				"  (select\n" +
+				"    concat(m3t.GID,',',m9t.GID) as GID,\n" +
 				"    m3t.BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO编号\n" +
 				"    m3t.BorderTransportMeans_Name as VSL_NAME, --船名\n" +
 				"    m3t.BorderTransportMeans_JourneyID as VOYAGE, --航次\n" +
@@ -366,8 +370,8 @@ public class mt3101 {
 		
 		tEnv.executeSql("" +
 				"create view ctn_join_billctn as\n" +
-				"select \n" +
-				"  ctn_t1.VSL_IMO_NO, ctn_t1.VSL_NAME, ctn_t1.VOYAGE,\n" +
+				"select\n" +
+				"  ctn_t1.GID, ctn_t1.VSL_IMO_NO, ctn_t1.VSL_NAME, ctn_t1.VOYAGE,\n" +
 				"  ctn_t1.ACCURATE_IMONO, ctn_t1.ACCURATE_VSLNAME, obcd.BL_NO,\n" +
 				"  obcd.MASTER_BL_NO, ctn_t1.I_E_MARK, ctn_t1.BIZ_STAGE_NO,\n" +
 				"  ctn_t1.BIZ_STAGE_CODE, ctn_t1.BIZ_STAGE_NAME, ctn_t1.BIZ_TIME,\n" +
@@ -390,6 +394,7 @@ public class mt3101 {
 				"  if(id4.res <> '', id4.res, 'N/A') as BIZ_STATUS --业务状态\n" +
 				"from\n" +
 				"  (select\n" +
+				"\tGID,\n" +
 				"    MessageID,--给后面关联\n" +
 				"    AssociatedTransportDocument_ID,--给后面关联\n" +
 				"    BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO编号\n" +
@@ -421,7 +426,7 @@ public class mt3101 {
 		
 		tEnv.executeSql("" +
 				"create view use999timeinport as\n" +
-				"select uin.VSL_IMO_NO,uin.VSL_NAME,uin.VOYAGE,uin.ACCURATE_IMONO,uin.ACCURATE_VSLNAME,\n" +
+				"select concat(uin.GID,',',mt9in.GID) as GID,uin.VSL_IMO_NO,uin.VSL_NAME,uin.VOYAGE,uin.ACCURATE_IMONO,uin.ACCURATE_VSLNAME,\n" +
 				"  uin.BL_NO,uin.MASTER_BL_NO,uin.I_E_MARK,uin.BIZ_STAGE_NO,uin.BIZ_STAGE_CODE,uin.BIZ_STAGE_NAME,\n" +
 				"  TO_TIMESTAMP(concat(substr(mt9in.SendTime,1,14),'.',substr(mt9in.SendTime,15)),'yyyyMMddHHmmss.SSS') as BIZ_TIME,\n" +
 				"  uin.BIZ_STATUS_CODE,uin.BIZ_STATUS,uin.BIZ_STATUS_DESC,uin.LASTUPDATEDDT,uin.ISDELETED, uin.UUID, uin.BIZ_STATUS_IFFECTIVE\n" +
@@ -585,13 +590,13 @@ public class mt3101 {
 		
 		statementSet.addInsertSql("" +
 				"insert into kafka_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
-				"select UUID as GID, 'DATA_FLINK_FULL_FLINK_TRACING_MT3101' as APP_NAME, 'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
+				"select GID, 'DATA_FLINK_FULL_FLINK_TRACING_MT3101' as APP_NAME, 'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
 				"  Row(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,MASTER_BL_NO,\n" +
 				"    I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,\n" +
 				"    BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE\n" +
 				"  ) as DATA\n" +
 				"from\n" +
-				"  (select bts.VSL_IMO_NO,bts.VSL_NAME,bts.VOYAGE,bts.ACCURATE_IMONO,bts.ACCURATE_VSLNAME,bts.BL_NO,\n" +
+				"  (select bts.GID,bts.VSL_IMO_NO,bts.VSL_NAME,bts.VOYAGE,bts.ACCURATE_IMONO,bts.ACCURATE_VSLNAME,bts.BL_NO,\n" +
 				"    bts.MASTER_BL_NO,bts.I_E_MARK,bts.BIZ_STAGE_NO,bts.BIZ_STAGE_CODE,bts.BIZ_STAGE_NAME,bts.BIZ_TIME,\n" +
 				"    bts.BIZ_STATUS_CODE,bts.BIZ_STATUS,bts.BIZ_STATUS_DESC,bts.LASTUPDATEDDT,bts.ISDELETED,\n" +
 				"    concat(bts.UUID,'_',bts.BL_NO,'_',cast(bts.BIZ_TIME as STRING)) as UUID,bts.BIZ_STATUS_IFFECTIVE\n" +
@@ -616,12 +621,12 @@ public class mt3101 {
 		
 		statementSet.addInsertSql("" +
 				"insert into kafka_ctn (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
-				"select UUID as GID, 'DATA_FLINK_FULL_FLINK_TRACING_MT3101' as APP_NAME, 'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
+				"select GID, 'DATA_FLINK_FULL_FLINK_TRACING_MT3101' as APP_NAME, 'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
 				"  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,\n" +
 				"    BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,\n" +
 				"    LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"  (select cts.VSL_IMO_NO,cts.VSL_NAME,cts.VOYAGE,cts.ACCURATE_IMONO,cts.ACCURATE_VSLNAME,cts.CTNR_NO,\n" +
+				"  (select cts.GID,cts.VSL_IMO_NO,cts.VSL_NAME,cts.VOYAGE,cts.ACCURATE_IMONO,cts.ACCURATE_VSLNAME,cts.CTNR_NO,\n" +
 				"    cts.I_E_MARK,cts.BIZ_STAGE_NO,cts.BIZ_STAGE_CODE,cts.BIZ_STAGE_NAME,cts.BIZ_TIME,\n" +
 				"    cts.BIZ_STATUS_CODE,cts.BIZ_STATUS,cts.BIZ_STATUS_DESC,cts.LASTUPDATEDDT,\n" +
 				"    cts.ISDELETED,concat(cts.UUID,'_',cts.CTNR_NO,'_',cast(cts.BIZ_TIME as STRING)) as UUID,cts.BIZ_STATUS_IFFECTIVE\n" +
@@ -649,15 +654,15 @@ public class mt3101 {
 		
 		statementSet.addInsertSql("" +
 				"insert into kafka_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
-				"select UUID as GID, 'DATA_FLINK_FULL_FLINK_TRACING_MT3101' as APP_NAME, \n" +
+				"select GID, 'DATA_FLINK_FULL_FLINK_TRACING_MT3101' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
 				"  Row(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,BL_NO,\n" +
 				"    MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,\n" +
 				"    BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,\n" +
 				"    ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"  (select \n" +
-				"    bt1.VSL_IMO_NO,bt1.VSL_NAME,bt1.VOYAGE,bt1.ACCURATE_IMONO,bt1.ACCURATE_VSLNAME,bt1.BL_NO,\n" +
+				"  (select\n" +
+				"  bt1.GID,bt1.VSL_IMO_NO,bt1.VSL_NAME,bt1.VOYAGE,bt1.ACCURATE_IMONO,bt1.ACCURATE_VSLNAME,bt1.BL_NO,\n" +
 				"    bt1.MASTER_BL_NO,bt1.I_E_MARK,bt1.BIZ_STAGE_NO,bt1.BIZ_STAGE_CODE,bt1.BIZ_STAGE_NAME,\n" +
 				"    bt1.BIZ_TIME,bt1.BIZ_STATUS_CODE,bt1.BIZ_STATUS,bt1.BIZ_STATUS_DESC,bt1.LASTUPDATEDDT,\n" +
 				"    bt1.ISDELETED,concat(bt1.UUID,'_',bt1.BL_NO,'_',cast(bt1.BIZ_TIME as STRING)) as UUID,bt1.BIZ_STATUS_IFFECTIVE\n" +
@@ -685,14 +690,14 @@ public class mt3101 {
 		
 		statementSet.addInsertSql("" +
 				"insert into kafka_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
-				"select UUID as GID, 'DATA_FLINK_FULL_FLINK_TRACING_COSTRPBULK' as APP_NAME,\n" +
+				"select GID, 'DATA_FLINK_FULL_FLINK_TRACING_COSTRPBULK' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
 				"  Row(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,\n" +
 				"    BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,\n" +
 				"    BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,\n" +
 				"    LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"  (select ibts.VSL_IMO_NO,ibts.VSL_NAME,ibts.VOYAGE,ibts.ACCURATE_IMONO,\n" +
+				"  (select ibts.GID,ibts.VSL_IMO_NO,ibts.VSL_NAME,ibts.VOYAGE,ibts.ACCURATE_IMONO,\n" +
 				"    ibts.ACCURATE_VSLNAME,ibts.BL_NO,ibts.MASTER_BL_NO,ibts.I_E_MARK,ibts.BIZ_STAGE_NO,\n" +
 				"    ibts.BIZ_STAGE_CODE,ibts.BIZ_STAGE_NAME,ibts.BIZ_TIME,ibts.BIZ_STATUS_CODE,ibts.BIZ_STATUS,\n" +
 				"    ibts.BIZ_STATUS_DESC,ibts.LASTUPDATEDDT,ibts.ISDELETED,\n" +
@@ -722,14 +727,14 @@ public class mt3101 {
 		
 		statementSet.addInsertSql("" +
 				"insert into kafka_bill (GID,APP_NAME,TABLE_NAME,SUBSCRIBE_TYPE,DATA)\n" +
-				"select UUID as GID, 'DATA_FLINK_FULL_FLINK_TRACING_COSTRPBULK' as APP_NAME,\n" +
+				"select GID, 'DATA_FLINK_FULL_FLINK_TRACING_COSTRPBULK' as APP_NAME,\n" +
 				"  'DM.TRACK_BIZ_STATUS_BILL' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
 				"  Row(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,\n" +
 				"    BL_NO,MASTER_BL_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,\n" +
 				"    BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,\n" +
 				"    LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
 				"from\n" +
-				"  (select ibts1.VSL_IMO_NO,ibts1.VSL_NAME,ibts1.VOYAGE,ibts1.ACCURATE_IMONO,\n" +
+				"  (select ibts1.GID,ibts1.VSL_IMO_NO,ibts1.VSL_NAME,ibts1.VOYAGE,ibts1.ACCURATE_IMONO,\n" +
 				"    ibts1.ACCURATE_VSLNAME,ibts1.BL_NO,ibts1.MASTER_BL_NO,ibts1.I_E_MARK,ibts1.BIZ_STAGE_NO,\n" +
 				"    ibts1.BIZ_STAGE_CODE,ibts1.BIZ_STAGE_NAME,ibts1.BIZ_TIME,ibts1.BIZ_STATUS_CODE,ibts1.BIZ_STATUS,\n" +
 				"    ibts1.BIZ_STATUS_DESC,ibts1.LASTUPDATEDDT,ibts1.ISDELETED,\n" +

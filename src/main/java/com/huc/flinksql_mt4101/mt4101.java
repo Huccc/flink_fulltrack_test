@@ -44,6 +44,21 @@ public class mt4101 {
 				") WITH (\n" +
 				"  'connector.type' = 'redis',\n" +
 				"  'redis.ip' = '192.168.129.121:6379,192.168.129.122:6379,192.168.129.123:6379,192.168.129.121:7379,192.168.129.122:7379,192.168.129.123:7379',\n" +
+//				"  'redis.ip' = '10.0.8.176:6379,10.0.8.177:6379,10.0.8.178:6379,10.0.8.179:6379,10.0.8.180:6379,10.0.8.181:6379',\n" +
+				"  'database.num' = '0',\n" +
+				"  'operate.type' = 'hash',\n" +
+				"  'redis.version' = '5.0'\n" +
+				")");
+		
+		tEnv.executeSql("" +
+				"--redis dim\n" +
+				"CREATE TABLE redis_dim1 (\n" +
+				"  key String,\n" +
+				"  hashkey String,\n" +
+				"  res String\n" +
+				") WITH (\n" +
+				"  'connector.type' = 'redis',\n" +
+				"  'redis.ip' = '10.0.8.176:6379,10.0.8.177:6379,10.0.8.178:6379,10.0.8.179:6379,10.0.8.180:6379,10.0.8.181:6379',\n" +
 				"  'database.num' = '0',\n" +
 				"  'operate.type' = 'hash',\n" +
 				"  'redis.version' = '5.0'\n" +
@@ -118,8 +133,8 @@ public class mt4101 {
 				"  parseMT4101fromMT9999(parseData) as pData\n" +
 				"from kafka_source_data where bizId='MT9999' and msgType='message_data'");
 		
-		Table source9999TB_table = tEnv.sqlQuery("select * from source9999TB");
-		tEnv.toAppendStream(source9999TB_table, Row.class).print();
+//		Table source9999TB_table = tEnv.sqlQuery("select * from source9999TB");
+//		tEnv.toAppendStream(source9999TB_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 9999获取报文公共字段
@@ -136,9 +151,9 @@ public class mt4101 {
 				"  pData.Response.Consignment as Consignment\n" +
 				"from source9999TB where MessageType='MT4101'");
 		
-		Table common9999TB_table = tEnv.sqlQuery("select * from common9999TB");
-		tEnv.toAppendStream(common9999TB_table, Row.class).print();
-		env.execute();
+//		Table common9999TB_table = tEnv.sqlQuery("select * from common9999TB");
+//		tEnv.toAppendStream(common9999TB_table, Row.class).print();
+//		env.execute();
 		
 		// TODO 展开9999提单
 		tEnv.executeSql("" +
@@ -154,8 +169,8 @@ public class mt4101 {
 //				"where ResponseType.Code='01'" +
 				"");
 		
-		Table mt9999withBill_table = tEnv.sqlQuery("select * from mt9999withBill");
-		tEnv.toAppendStream(mt9999withBill_table, Row.class).print();
+//		Table mt9999withBill_table = tEnv.sqlQuery("select * from mt9999withBill");
+//		tEnv.toAppendStream(mt9999withBill_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 提单结果表
@@ -189,7 +204,7 @@ public class mt4101 {
 		
 		Table resBill_table = tEnv.sqlQuery("select * from resBill");
 		tEnv.toAppendStream(resBill_table, Row.class).print();
-//		env.execute();
+		env.execute();
 		
 		// TODO Oracle sink表，提单表
 		tEnv.executeSql("" +

@@ -21,11 +21,11 @@ public class cuschk_test {
                 "  `proctime` AS PROCTIME() + INTERVAL '8' HOURS\n" +
                 ") WITH (\n" +
                 "  'connector' = 'kafka',\n" +
-                "  'topic' = 'data-xpq-db-parse-result',\n" +
+                "  'topic' = 'data-xpq-db-parse-result1',\n" +
                 "  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
                 "  'properties.group.id' = 'flink-sql-full-link-tracing-cuschk',\n" +
                 "  'format' = 'json',\n" +
-                "  'scan.startup.mode' = 'latest-offset'\n" +
+                "  'scan.startup.mode' = 'group-offsets'\n" +
                 ")\n");
 
 //        tEnv.executeSql("" +
@@ -42,10 +42,10 @@ public class cuschk_test {
                 "select '1359023762372042843' as msgId," +
                 "'ogg_data' as bizId," +
                 "'null' as msgType," +
-                "'cuschk_test_ctnr' as bizUniqueId," +
-//                "'cuschk_test_bill' as bizUniqueId," +
-                "'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
-//                "'SRC_XIB3.EDI_CUSCHK_BILLINFO' as destination," +
-                "'{\"ID\":98308,\"MSGLOGID\":\"31111\",\"MSGTYPE\":null,\"ENTRYID\":null,\"EXAMRECID\":null,\"EXAMMODE\":null,\"IEFLAG\":\"E\",\"VSLNAME\":\"COSCO MALAYSIA\",\"VOYAGE\":\"ac7\",\"BLNO\":\"100002\",\"TRADENAME\":null,\"OWNERNAME\":null,\"AGENTNAME\":null,\"DISCHARGE_PLACE\":null,\"CUSTOMS_DISTRICT\":null,\"TIMEFLAG\":\"2022-04-07 00:01:25\",\"FREEFLAG\":null,\"OP_TYPE\":\"I\",\"F_TAG\":null,\"MATCH_FLAG\":null,\"MSG2DB_TIME\":null,\"CAPXTIMESTAMP\":null,\"CHECKID\":null,\"PARENTLOGID\":\"31111\",\"CTNNO\":\"100003\",\"CAPXTIMESTAMP\":null,\"CHECKTYPE\":null}' as parseData");
+//                "'cuschk_test_ctnr' as bizUniqueId," +
+                "'cuschk_test_bill' as bizUniqueId," +
+//                "'SRC_XIB3.EDI_CUSCHK_CTNINFO' as destination," +
+                "'SRC_XIB3.EDI_CUSCHK_BILLINFO' as destination," +
+                "'{\"ID\":98308,\"MSGLOGID\":\"31111\",\"MSGTYPE\":null,\"ENTRYID\":null,\"EXAMRECID\":null,\"EXAMMODE\":null,\"IEFLAG\":\"E\",\"VSLNAME\":\"HYUNDAI FORCE\",\"VOYAGE\":\"ac7\",\"BLNO\":\"HASLC01220404243\",\"TRADENAME\":null,\"OWNERNAME\":null,\"AGENTNAME\":null,\"DISCHARGE_PLACE\":null,\"CUSTOMS_DISTRICT\":null,\"TIMEFLAG\":\"2022-04-08 00:01:25\",\"FREEFLAG\":null,\"OP_TYPE\":\"I\",\"F_TAG\":null,\"MATCH_FLAG\":null,\"MSG2DB_TIME\":null,\"CAPXTIMESTAMP\":null,\"CHECKID\":null,\"PARENTLOGID\":\"31111\",\"CTNNO\":\"100003\",\"CAPXTIMESTAMP\":null,\"CHECKTYPE\":null}' as parseData");
     }
 }

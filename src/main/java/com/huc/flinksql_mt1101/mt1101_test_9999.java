@@ -30,7 +30,7 @@ public class mt1101_test_9999 {
 				"  'scan.startup.mode' = 'group-offsets'\n" +
 				")");
 		
-		String msg = "{\"Response\":{\"BorderTransportMeans\":{\"JourneyID\":\"MT1101001\",\"ID\":\"UN9133329\"},\"Consignment\":[{\"AssociatedTransportDocument\":{\"ID\":\"\"},\"TransportContractDocument\":{\"ID\":\"bloo-202101\"},\"ResponseType\":{\"Text\":\"2313\",\"Code\":\"01\"}}],\"TransportEquipment\":[{\"EquipmentIdentification\":{\"ID\":\"HDM620111315\"},\"TransportContractDocument\":{\"ID\":\"bloo-202101\"},\"ResponseType\":{\"Text\":\"2323\",\"Code\":\"01\"}}]},\"Head\":{\"ReceiverID\":\"2200132208081\",\"SendTime\":\"20211104075450000\",\"Version\":\"1.0\",\"FunctionCode\":\"3\",\"SenderID\":\"2200\",\"MessageType\":\"MT1101\",\"MessageID\":\"DET_20210030\"},\"ExtraInfo\":{\"receiver\":\"edi\",\"sender\":\"CNC2200\"}}\n";
+		String msg = "{\"Response\":{\"BorderTransportMeans\":{\"JourneyID\":\"MT1101001\",\"ID\":\"UN9133329\"},\"Consignment\":[{\"AssociatedTransportDocument\":{\"ID\":\"\"},\"TransportContractDocument\":{\"ID\":\"bloo-202101\"},\"ResponseType\":{\"Text\":\"2313\",\"Code\":\"01\"}}],\"TransportEquipment\":[{\"EquipmentIdentification\":{\"ID\":\"HDM620111315\"},\"TransportContractDocument\":{\"ID\":\"bloo-202101\"},\"ResponseType\":{\"Text\":\"2323\",\"Code\":\"01\"}}]},\"Head\":{\"ReceiverID\":\"2200132208081\",\"SendTime\":\"20221105075450000\",\"Version\":\"1.0\",\"FunctionCode\":\"3\",\"SenderID\":\"2200\",\"MessageType\":\"MT1101\",\"MessageID\":\"DET_20210030\"},\"ExtraInfo\":{\"receiver\":\"edi\",\"sender\":\"CNC2200\"}}\n";
 		
 		tEnv.executeSql("" +
 				"insert into kafka_source_data(msgId,bizId,msgType,bizUniqueId,destination,parseData) " +

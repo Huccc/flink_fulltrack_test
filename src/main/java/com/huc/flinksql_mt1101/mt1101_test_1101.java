@@ -62,6 +62,22 @@ public class mt1101_test_1101 {
 				"                \"GoodsConsignedPlace\": {\n" +
 				"                    \"ID\": \"QAMES\"\n" +
 				"                },\n" +
+				"                \"TransportEquipment\":[\n" +
+				"                    {\n" +
+				"                        \"CharacteristicCode\":\"45G1\",\n" +
+				"                        \"EquipmentIdentification\":{\n" +
+				"                            \"ID\":\"TRLU7344258\"\n" +
+				"                        },\n" +
+				"                        \"SealID\":[\n" +
+				"                            {\n" +
+				"                                \"Value\":\"M/0018161\",\n" +
+				"                                \"AgencyCode\":\"SH\"\n" +
+				"                            }\n" +
+				"                        ],\n" +
+				"                        \"SupplierPartyTypeCode\":\"2\",\n" +
+				"                        \"FullnessCode\":\"8\"\n" +
+				"                    }\n" +
+				"                ],\n" +
 				"                \"TransportContractDocument\": {\n" +
 				"                    \"ID\": \"bloo-202101\",\n" +
 				"                    \"ConditionCode\": \"10\"\n" +

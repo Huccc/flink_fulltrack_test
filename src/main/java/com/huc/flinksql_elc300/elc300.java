@@ -82,8 +82,8 @@ public class elc300 {
 				"select msgId,LASTUPDATEDDT,parseECL300(parseData).DataInfo.DockInfoList as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"from kafka_source_data where bizId='ECL300' and msgType='message_data'");
 		
-		Table sourceECL300TB_table = tEnv.sqlQuery("select * from sourceECL300TB");
-		tEnv.toAppendStream(sourceECL300TB_table, Row.class).print();
+//		Table sourceECL300TB_table = tEnv.sqlQuery("select * from sourceECL300TB");
+//		tEnv.toAppendStream(sourceECL300TB_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 展开数组
@@ -125,7 +125,7 @@ public class elc300 {
 				"  if(dim1.res <> '', dim1.res, if(dim5.res <> '', dim5.res, 'N/A')) as ACCURATE_IMONO, --标准IMO\n" +
 				"  if(dim2.res <> '', dim2.res, if(dim6.res <> '', dim6.res, 'N/A')) as ACCURATE_VSLNAME, --标准船名\n" +
 				"  if(dim3.res <> '', dim3.res, 'N/A') as BIZ_STAGE_NAME, --业务节点名称\n" +
-				"  if(dim4.res <> '', dim4.res, 'N/A') as BIZ_STATUS, --业务状态\n" +
+				"  '已提离' as BIZ_STATUS, --业务状态\n" +
 				"  uuid() as UUID,\n" +
 				"  1 as BIZ_STATUS_IFFECTIVE\n" +
 				"from commonTB\n" +
@@ -134,11 +134,11 @@ public class elc300 {
 				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim5 on concat('DIM:DIM_SHIP:VSL_NAME_EN=',commonTB.VSL_NAME) = dim5.key and 'IMO_NO' = dim5.hashkey --通过船名查\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim6 on concat('DIM:DIM_SHIP:VSL_NAME_EN=',commonTB.VSL_NAME) = dim6.key and 'VSL_NAME_EN' = dim6.hashkey --通过船名查\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim3 on concat('DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=',commonTB.BIZ_STAGE_NO,'&SUB_STAGE_CODE=',commonTB.BIZ_STAGE_CODE) = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim4 on concat('DIM:DIM_COMMON_MINI:COMMON_CODE=I_portOut_liftOff&TYPE_CODE=',commonTB.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
+				"--left join redis_dim FOR SYSTEM_TIME AS OF commonTB.LASTUPDATEDDT as dim4 on concat('DIM:DIM_COMMON_MINI:COMMON_CODE=lift_off_status&TYPE_CODE=',commonTB.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 		
 		Table withDIMTB_table = tEnv.sqlQuery("select * from withDIMTB");
 		tEnv.toAppendStream(withDIMTB_table, Row.class).print();
-//		env.execute();
+		env.execute();
 		
 		// TODO Oracle sink表，提单表
 		tEnv.executeSql("" +
