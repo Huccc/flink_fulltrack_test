@@ -29,6 +29,15 @@ public class departure_test {
 				"  'scan.startup.mode' = 'group-offsets'\n" +
 				")");
 		
+//		tEnv.executeSql("" +
+//				"insert into kafka_source_data(msgId,bizId,msgType,bizUniqueId,destination,parseData) " +
+//				"select '1359023762372042843' as msgId," +
+//				"'ogg_data' as bizId," +
+//				"'DECLARE_TEST' as msgType," +
+//				"'LEAVE_PORT' as bizUniqueId," +
+//				"'SRC_SHIPDYN.DYN_DEP_DECLARE' as destination," +
+//				"'{\"ID\":98308,\"BUSSINESS_TYPE\":\"31111\",\"VESSELNAME_EN\":\"CHUN JIN\",\"IMO_NO\":\"9113173\",\"VESSEL_CALL\":\"3FOW3\",\"VOYAGE_IN\":\"YA0012\",\"DEPARTURE_DATE\":\"2022-07-09 00:01:25\",\"VOYAGE_OUT\":\"YA0011\",\"BUSSINESS_TYPE\":\"31111\",\"VESSELNAME_CN\":\"亿通国际\"}' as parseData");
+		
 		tEnv.executeSql("" +
 				"insert into kafka_source_data(msgId,bizId,msgType,bizUniqueId,destination,parseData) " +
 				"select '1359023762372042843' as msgId," +
@@ -36,6 +45,6 @@ public class departure_test {
 				"'DECLARE_TEST' as msgType," +
 				"'LEAVE_PORT' as bizUniqueId," +
 				"'SRC_SHIPDYN.DYN_DEP_DECLARE' as destination," +
-				"'{\"ID\":98308,\"BUSSINESS_TYPE\":\"31111\",\"VESSELNAME_EN\":\"CHUN JINN\",\"IMO_NO\":\"91131733\",\"VESSEL_CALL\":\"3FOW3\",\"VOYAGE_IN\":\"YA0012\",\"DEPARTURE_DATE\":\"2022-04-08 00:01:25\",\"VOYAGE_OUT\":\"YA0011\",\"BUSSINESS_TYPE\":\"31111\",\"VESSELNAME_CN\":\"亿通国际\"}' as parseData");
+				"'{\"ID\":9,\"BUSSINESS_TYPE\":\"01\",\"VESSELNAME_CN\":\"亿通国际\",\"VESSELNAME_EN\":\"CHUN JIN\",\"IMO_NO\":\"9113173\",\"VESSEL_CALL\":\"2124W\",\"VOYAGE_OUT\":\"YA0011\",\"MSA_VESSEL_CODE\":\"B9629419\",\"DEPARTURE_DATE\":null,\"OP_TYPE\":\"I\"}' as parseData");
 	}
 }

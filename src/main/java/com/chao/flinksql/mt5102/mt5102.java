@@ -555,7 +555,7 @@ public class mt5102 {
 				"from mt9999bill\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999bill.LASTUPDATEDDT as dim1 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',mt9999bill.BorderTransportMeans_ID) = dim1.key and 'VSL_NAME_EN' = dim1.hashkey --取船名和标准船名\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999bill.LASTUPDATEDDT as dim2 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',mt9999bill.BorderTransportMeans_ID) = dim2.key and 'IMO_NO' = dim2.hashkey --取标准IMO\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999bill.LASTUPDATEDDT as dim3 on 'BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=C10.11&SUB_STAGE_CODE=E_cusDecl_MT5102' = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey --业务环节节点名称\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999bill.LASTUPDATEDDT as dim3 on 'BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=C10.11&SUB_STAGE_CODE=E_cusDecl_mt5102' = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey --业务环节节点名称\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999bill.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999bill.bill_ResponseType_Code) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 		
 		Table tallyBill_table = tEnv.sqlQuery("select * from tallyBill");

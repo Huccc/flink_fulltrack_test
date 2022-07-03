@@ -401,7 +401,7 @@ public class coarri_container {
 
 		Table billFromCtnr_table = tEnv.sqlQuery("select * from billFromCtnr");
 		tEnv.toAppendStream(billFromCtnr_table, Row.class).print();
-		env.execute();
+//		env.execute();
 		
 		// TODO 关联箱单关系表取分提单号
 		tEnv.executeSql("" +

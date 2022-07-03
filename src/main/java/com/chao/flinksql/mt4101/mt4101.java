@@ -115,11 +115,18 @@ public class mt4101 {
 				"create view source9999TB as\n" +
 				"select\n" +
 				"  msgId, LASTUPDATEDDT,\n" +
-				"  parseMT4101fromMT9999(parseData) as pData//\n" +
+				"  parseMT4101fromMT9999(parseData) as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
 				"from kafka_source_data where bizId='MT9999' and msgType='message_data'");
 		
-		Table source9999TB_table = tEnv.sqlQuery("select * from source9999TB");
-		tEnv.toAppendStream(source9999TB_table, Row.class).print();
+//		tEnv.executeSql("" +
+//				"create view source9999TB as\n" +
+//				"select\n" +
+//				"  COUNT(*)\n" +
+//				"from kafka_source_data where bizId='MT9999' and msgType='message_data' " +
+//				"group by tumble(LASTUPDATEDDT,interval '10' second)");
+		
+//		Table source9999TB_table = tEnv.sqlQuery("select * from source9999TB");
+//		tEnv.toAppendStream(source9999TB_table, Row.class).print();
 //		env.execute();
 		
 		// TODO 9999获取报文公共字段
@@ -182,7 +189,7 @@ public class mt4101 {
 				"from mt9999withBill\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim1 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',mt9999withBill.VSL_IMO_NO) = dim1.key and 'IMO_NO' = dim1.hashkey --通过IMO查\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim2 on concat('BDCP:DIM:DIM_SHIP:IMO_NO=',mt9999withBill.VSL_IMO_NO) = dim2.key and 'VSL_NAME_EN' = dim2.hashkey --通过IMO查\n" +
-				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=C8.5&SUB_STAGE_CODE=E_cusDecl_MT4101') = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
+				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=C8.5&SUB_STAGE_CODE=E_cusDecl_mt4101') = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999withBill.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 		
 		Table resBill_table = tEnv.sqlQuery("select * from resBill");

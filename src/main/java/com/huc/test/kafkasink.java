@@ -1,9 +1,9 @@
-package com.chao.flinksql.cuschk;
+package com.huc.test;
 
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
-public class cuschk_test {
+public class kafkasink {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(env);
@@ -21,9 +21,9 @@ public class cuschk_test {
                 "  `proctime` AS PROCTIME() + INTERVAL '8' HOURS\n" +
                 ") WITH (\n" +
                 "  'connector' = 'kafka',\n" +
-                "  'topic' = 'data-xpq-db-parse-result',\n" +
+                "  'topic' = 'eds_source_test',\n" +
                 "  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
-                "  'properties.group.id' = 'flink-sql-full-link-tracing-cuschk',\n" +
+                "  'properties.group.id' = 'EDS',\n" +
                 "  'format' = 'json',\n" +
                 "  'scan.startup.mode' = 'group-offsets'\n" +
                 ")\n");

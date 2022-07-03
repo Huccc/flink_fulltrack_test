@@ -32,6 +32,10 @@ public class cuschk2 {
 				"  'scan.startup.mode' = 'latest-offset'\n" +
 				")");
 		
+//		Table KAFKA_DATA_XPQ_DB_PARSE_RESULT = tEnv.sqlQuery("select * from KAFKA_DATA_XPQ_DB_PARSE_RESULT");
+//		tEnv.toAppendStream(KAFKA_DATA_XPQ_DB_PARSE_RESULT,Row.class).print();
+//		env.execute();
+		
 		tEnv.executeSql("" +
 				"CREATE TABLE REDIS_DIM (\n" +
 				"  key STRING,\n" +
@@ -272,6 +276,10 @@ public class cuschk2 {
 				"                FROM KAFKA_DATA_XPQ_DB_PARSE_RESULT \n" +
 				"                WHERE bizId = 'ogg_data' AND destination = 'SRC_XIB3.EDI_CUSCHK_BILLINFO'");
 		
+//		Table TMP_BILL_INFO = tEnv.sqlQuery("select * from TMP_BILL_INFO");
+//		tEnv.toAppendStream(TMP_BILL_INFO,Row.class).print();
+//		env.execute();
+		
 		tEnv.executeSql("" +
 				"CREATE VIEW BILL_INFO( \n" +
 				"                  MSGLOGID, -- 用于和 “箱” 关联 \n" +
@@ -391,7 +399,6 @@ public class cuschk2 {
 				"                  CASE IEFLAG WHEN 'E' THEN 'E_cusDecl_chk' WHEN 'I' THEN 'I_cusDecl_chk' ELSE 'N/A' END AS BIZ_STAGE_CODE, \n" +
 				"                  IF(dim_biz_stage.`value` <> '', dim_biz_stage.`value`, 'N/A') AS BIZ_STAGE_NAME, \n" +
 				"                  TO_TIMESTAMP(TIMEFLAG, 'yyyy-MM-dd HH:mm:ss') AS BIZ_TIME,\n" +
-				"--                   IF(FREEFLAG <> '', FREEFLAG, 'C') AS BIZ_STATUS_CODE,\n" +
 				"                  case FREEFLAG when '' then 'C' when 'null' then 'C' else FREEFLAG END AS BIZ_STATUS_CODE,\n" +
 				"                  IF(dim_common_mini.`value` <> '', dim_common_mini.`value`, 'N/A') AS BIZ_STATUS,\n" +
 				"                  1 AS BIZ_STATUS_IFFECTIVE, \n" +
@@ -410,7 +417,7 @@ public class cuschk2 {
 				"                        '&SUB_STAGE_CODE=', \n" +
 				"                        CASE IEFLAG WHEN 'E' THEN 'E_cusDecl_chk' WHEN 'I' THEN 'I_cusDecl_chk' ELSE 'N/A' END \n" +
 				"                    ) AND dim_biz_stage.field = 'SUB_STAGE_NAME' \n" +
-				"                  LEFT JOIN REDIS_DIM FOR SYSTEM_TIME AS OF BI.`proctime` AS dim_common_mini\n" +
+				"                  LEFT JOIN REDIS_DIM FOR SYSTEM_TIME AS OF BI.`proctime` AS dim_common_mini \n" +
 				"                    ON dim_common_mini.key = CONCAT('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=cus_check_result&TYPE_CODE=', case FREEFLAG when '' then 'C' when 'null' then 'C' else FREEFLAG END)\n" +
 				"                    AND dim_common_mini.field = 'TYPE_NAME'");
 		

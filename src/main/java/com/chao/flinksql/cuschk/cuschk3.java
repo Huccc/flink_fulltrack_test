@@ -22,15 +22,20 @@ public class cuschk3 {
 				"  bizUniqueId STRING,\n" +
 				"  destination STRING,\n" +
 				"  parseData STRING, -- 此处是 JSON 字符串，需要使用 UDF 进行转换\n" +
-				"  `proctime` AS PROCTIME() + INTERVAL '8' HOURS -- 只能在 CREATE TABLE 中这样指定，在 SELECT、CREATE VIEW 等语句中需要使用 PROCTIME() AS `proctime` 来设置\n" +
+				"  `proctime` AS PROCTIME() + INTERVAL '8' HOURS,\n" +
+				"  wintime AS PROCTIME()\n" +
 				") WITH (\n" +
 				"  'connector' = 'kafka',\n" +
-				"  'topic' = 'data-xpq-db-parse-result1',\n" +
+				"  'topic' = 'data-xpq-db-parse-result',\n" +
 				"  'properties.bootstrap.servers' = '192.168.129.121:9092,192.168.129.122:9092,192.168.129.123:9092',\n" +
 				"  'properties.group.id' = 'flink-sql-full-link-tracing-cuschk',\n" +
 				"  'format' = 'json',\n" +
 				"  'scan.startup.mode' = 'group-offsets'\n" +
 				")");
+		
+//		Table KAFKA_DATA_XPQ_DB_PARSE_RESULT = tEnv.sqlQuery("select * from KAFKA_DATA_XPQ_DB_PARSE_RESULT");
+//		tEnv.toAppendStream(KAFKA_DATA_XPQ_DB_PARSE_RESULT,Row.class).print();
+//		env.execute();
 		
 		tEnv.executeSql("" +
 				"CREATE TABLE REDIS_DIM (\n" +
@@ -264,11 +269,11 @@ public class cuschk3 {
 		tEnv.executeSql("" +
 				"CREATE VIEW TMP_BILL_INFO ( \n" +
 				"                  `map`, \n" +
-				"                  `proctime` ,GID\n" +
+				"                  `proctime` ,GID ,wintime\n" +
 				"                ) AS \n" +
 				"                SELECT \n" +
 				"                  STR_TO_MAP(regexp_replace(regexp_replace(regexp_replace(parseData, '\"', ''), '\\{', ''), '\\}', ''), ',', ':') AS `map`, --JSON_TO_MAP(parseData) \n" +
-				"                  `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+				"                  `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID ,wintime\n" +
 				"                FROM KAFKA_DATA_XPQ_DB_PARSE_RESULT \n" +
 				"                WHERE bizId = 'ogg_data' AND destination = 'SRC_XIB3.EDI_CUSCHK_BILLINFO'");
 		
@@ -295,7 +300,7 @@ public class cuschk3 {
 				"                  MSG2DB_TIME, \n" +
 				"                  CAPXTIMESTAMP, \n" +
 				"                  CHECKID, \n" +
-				"                  `proctime` ,GID\n" +
+				"                  `proctime` ,GID ,wintime\n" +
 				"                ) AS \n" +
 				"                SELECT \n" +
 				"                  `map`['MSGLOGID'], \n" +
@@ -319,18 +324,18 @@ public class cuschk3 {
 				"                  `map`['MSG2DB_TIME'], \n" +
 				"                  `map`['CAPXTIMESTAMP'], \n" +
 				"                  `map`['CHECKID'], \n" +
-				"                  `proctime` ,GID\n" +
+				"                  `proctime` ,GID ,wintime\n" +
 				"                FROM TMP_BILL_INFO \n" +
 				"                WHERE `map`['OP_TYPE'] = 'I'");
 		
 		tEnv.executeSql("" +
 				"CREATE VIEW TMP_CTNR_INFO ( \n" +
 				"                  `map`, \n" +
-				"                  `proctime` ,GID\n" +
+				"                  `proctime` ,GID ,wintime\n" +
 				"                ) AS \n" +
 				"                SELECT \n" +
 				"                  STR_TO_MAP(regexp_replace(regexp_replace(regexp_replace(parseData, '\"', ''), '\\{', ''), '\\}', ''), ',', ':') AS `map`, \n" +
-				"                  `proctime` ,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+				"                  `proctime` ,concat(msgId, '^', bizUniqueId, '^', bizId) as GID ,wintime\n" +
 				"                FROM KAFKA_DATA_XPQ_DB_PARSE_RESULT \n" +
 				"                WHERE bizId = 'ogg_data' AND destination = 'SRC_XIB3.EDI_CUSCHK_CTNINFO'");
 		
@@ -341,7 +346,7 @@ public class cuschk3 {
 				"                  CTNNO, \n" +
 				"                  CAPXTIMESTAMP, \n" +
 				"                  CHECKTYPE, \n" +
-				"                  `proctime` ,GID\n" +
+				"                  `proctime` ,GID ,wintime\n" +
 				"                ) AS \n" +
 				"                SELECT \n" +
 				"                  `map`['ID'], \n" +
@@ -349,12 +354,12 @@ public class cuschk3 {
 				"                  `map`['CTNNO'], \n" +
 				"                  `map`['CAPXTIMESTAMP'], \n" +
 				"                  `map`['CHECKTYPE'], \n" +
-				"                  `proctime` ,GID\n" +
+				"                  `proctime` ,GID ,wintime\n" +
 				"                FROM TMP_CTNR_INFO");
 		
 		tEnv.executeSql("" +
-				"CREATE VIEW BILL ( \n" +
-				"                  UUID, GID,\n" +
+				"CREATE VIEW RESBILL_TMP_ALL ( \n" +
+				"                  UUID, GID, wintime,\n" +
 				"                  MSGLOGID, -- 用于和 “箱” 关联 \n" +
 				"                  BL_NO, \n" +
 				"                  MASTER_BL_NO, \n" +
@@ -377,7 +382,7 @@ public class cuschk3 {
 				"                  `proctime` \n" +
 				"                ) AS \n" +
 				"                SELECT \n" +
-				"                  uuid() AS UUID, GID,\n" +
+				"                  uuid() AS UUID, GID, wintime,\n" +
 				"                  MSGLOGID,\n" +
 				"                  IF(BLNO <> '', TRIM(REGEXP_REPLACE(BLNO, '[\\t\\n\\r]', '')), 'N/A') AS BL_NO,\n" +
 				"                  'N/A' AS MASTER_BL_NO, \n" +
@@ -414,10 +419,48 @@ public class cuschk3 {
 				"                    ON dim_common_mini.key = CONCAT('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=cus_check_result&TYPE_CODE=', case FREEFLAG when '' then 'C' when 'null' then 'C' else FREEFLAG END)\n" +
 				"                    AND dim_common_mini.field = 'TYPE_NAME'");
 		
+//		Table RESBILL_TMP_ALL = tEnv.sqlQuery("select * from RESBILL_TMP_ALL");
+//		tEnv.toAppendStream(RESBILL_TMP_ALL, Row.class).print();
+//		env.execute();
+		
+		// TODO 获取业务主键的最大业务发生时间
+		tEnv.executeSql("" +
+				"create view res_tmp_maxtime as\n" +
+				"select\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  BL_NO,\n" +
+				"  BIZ_STAGE_NO,\n" +
+				"  BIZ_STATUS_CODE,\n" +
+				"  max(BIZ_TIME) as BIZ_TIME\n" +
+				"FROM RESBILL_TMP_ALL\n" +
+				"GROUP BY\n" +
+				"  TUMBLE(wintime, INTERVAL '2' second),\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  BL_NO,\n" +
+				"  BIZ_STAGE_NO,\n" +
+				"  BIZ_STATUS_CODE");
+		
+		Table res_tmp_maxtime = tEnv.sqlQuery("select * from res_tmp_maxtime");
+		tEnv.toAppendStream(res_tmp_maxtime, Row.class).print();
+//		env.execute();
+		
+		// TODO 获取业务主键最大业务发生时间的所有字段
+		tEnv.executeSql("" +
+				"create view BILL as\n" +
+				"select RESBILL_TMP_ALL.*\n" +
+				"from  RESBILL_TMP_ALL join res_tmp_maxtime\n" +
+				"                           on RESBILL_TMP_ALL.VSL_IMO_NO=res_tmp_maxtime.VSL_IMO_NO\n" +
+				"                           and RESBILL_TMP_ALL.VOYAGE=res_tmp_maxtime.VOYAGE\n" +
+				"                           and RESBILL_TMP_ALL.BL_NO=res_tmp_maxtime.BL_NO\n" +
+				"                           and RESBILL_TMP_ALL.BIZ_STAGE_NO=res_tmp_maxtime.BIZ_STAGE_NO\n" +
+				"                           and RESBILL_TMP_ALL.BIZ_STATUS_CODE=res_tmp_maxtime.BIZ_STATUS_CODE\n" +
+				"                           and RESBILL_TMP_ALL.BIZ_TIME=res_tmp_maxtime.BIZ_TIME");
+		
 		Table BILL = tEnv.sqlQuery("select * from BILL");
 		tEnv.toAppendStream(BILL, Row.class).print();
-		env.execute();
-		
+//		env.execute();
 		
 		StatementSet statementSet = tEnv.createStatementSet();
 		
@@ -471,7 +514,7 @@ public class cuschk3 {
 				"                 and BILL.BIZ_STATUS_CODE=obd.BIZ_STATUS_CODE \n" +
 				"                where (obd.BIZ_TIME is null or BILL.BIZ_TIME>obd.BIZ_TIME) \n" +
 				"                 and BILL.BIZ_TIME is not null");
-		
+
 //		statementSet.execute();
 		
 		statementSet.addInsertSql("" +
@@ -620,48 +663,48 @@ public class cuschk3 {
 		
 		
 		statementSet.addInsertSql("" +
-				"INSERT INTO KAFKA_TRACK_BIZ_STATUS_CTNR ( \n" +
-				"                  GID, \n" +
-				"                  APP_NAME, \n" +
-				"                  TABLE_NAME, \n" +
-				"                  SUBSCRIBE_TYPE, \n" +
-				"                  DATA \n" +
-				"                ) \n" +
-				"                SELECT \n" +
-				"                  GID, \n" +
-				"                  APP_NAME, \n" +
-				"                  TABLE_NAME, \n" +
-				"                  SUBSCRIBE_TYPE, \n" +
+				"INSERT INTO KAFKA_TRACK_BIZ_STATUS_CTNR (\n" +
+				"                  GID,\n" +
+				"                  APP_NAME,\n" +
+				"                  TABLE_NAME,\n" +
+				"                  SUBSCRIBE_TYPE,\n" +
+				"                  DATA\n" +
+				"                )\n" +
+				"                SELECT\n" +
+				"                  GID,\n" +
+				"                  APP_NAME,\n" +
+				"                  TABLE_NAME,\n" +
+				"                  SUBSCRIBE_TYPE,\n" +
 				"                  ROW(UUID, CTNR_NO, VSL_IMO_NO, VSL_NAME, VOYAGE, ACCURATE_IMONO, ACCURATE_VSLNAME, I_E_MARK, BIZ_STAGE_NO, BIZ_STAGE_CODE,\n" +
-				"                    BIZ_STAGE_NAME, BIZ_TIME, BIZ_STATUS_CODE, BIZ_STATUS, BIZ_STATUS_IFFECTIVE,BIZ_STATUS_DESC, LASTUPDATEDDT, ISDELETED) AS DATA -- 此时的 LASTUPDATEDDT 没有  '.' \n" +
-				"                FROM ( \n" +
-				"                  SELECT \n" +
+				"                    BIZ_STAGE_NAME, BIZ_TIME, BIZ_STATUS_CODE, BIZ_STATUS, BIZ_STATUS_IFFECTIVE,BIZ_STATUS_DESC, LASTUPDATEDDT, ISDELETED) AS DATA -- 此时的 LASTUPDATEDDT 没有  '.'\n" +
+				"                FROM (\n" +
+				"                  SELECT\n" +
 				"                    c.GID AS GID,\n" +
-				"                    p.APP_NAME AS APP_NAME, \n" +
-				"                    p.TABLE_NAME AS TABLE_NAME, \n" +
+				"                    p.APP_NAME AS APP_NAME,\n" +
+				"                    p.TABLE_NAME AS TABLE_NAME,\n" +
 				"                    p.SUBSCRIBE_TYPE AS SUBSCRIBE_TYPE,\n" +
 				"                    c.UUID AS UUID,\n" +
-				"                    c.CTNR_NO AS CTNR_NO, \n" +
-				"                    c.VSL_IMO_NO AS VSL_IMO_NO, \n" +
-				"                    c.VSL_NAME AS VSL_NAME, \n" +
-				"                    c.VOYAGE AS VOYAGE, \n" +
-				"                    c.ACCURATE_IMONO AS ACCURATE_IMONO, \n" +
-				"                    c.ACCURATE_VSLNAME AS ACCURATE_VSLNAME, \n" +
-				"                    c.I_E_MARK AS I_E_MARK, \n" +
-				"                    c.BIZ_STAGE_NO AS BIZ_STAGE_NO, \n" +
-				"                    c.BIZ_STAGE_CODE AS BIZ_STAGE_CODE, \n" +
-				"                    c.BIZ_STAGE_NAME AS BIZ_STAGE_NAME, \n" +
-				"                    c.BIZ_TIME AS BIZ_TIME, \n" +
-				"                    c.BIZ_STATUS_CODE AS BIZ_STATUS_CODE, \n" +
-				"                    c.BIZ_STATUS AS BIZ_STATUS, \n" +
-				"                    c.BIZ_STATUS_IFFECTIVE AS BIZ_STATUS_IFFECTIVE, \n" +
-				"                    c.BIZ_STATUS_DESC AS BIZ_STATUS_DESC, \n" +
-				"                    c.LASTUPDATEDDT AS LASTUPDATEDDT, -- 重命名以确保后续使用 ROW 时不需要 '.' \n" +
-				"                    CAST(c.ISDELETED AS INT) AS ISDELETED -- 自动转换类型 \n" +
-				"                  FROM CTNR AS c \n" +
-				"                    LEFT JOIN ORACLE_SUBSCRIBE_PARAM FOR SYSTEM_TIME as OF c.`proctime` AS p \n" +
-				"                      ON 'DATA_FLINK_FULL_FLINK_TRACING_CUSCHK'=p.APP_NAME AND 'DM.TRACK_BIZ_STATUS_CTNR'=p.TABLE_NAME \n" +
-				"                        WHERE p.ISCURRENT = 1 AND p.SUBSCRIBE_TYPE = 'I' \n" +
+				"                    c.CTNR_NO AS CTNR_NO,\n" +
+				"                    c.VSL_IMO_NO AS VSL_IMO_NO,\n" +
+				"                    c.VSL_NAME AS VSL_NAME,\n" +
+				"                    c.VOYAGE AS VOYAGE,\n" +
+				"                    c.ACCURATE_IMONO AS ACCURATE_IMONO,\n" +
+				"                    c.ACCURATE_VSLNAME AS ACCURATE_VSLNAME,\n" +
+				"                    c.I_E_MARK AS I_E_MARK,\n" +
+				"                    c.BIZ_STAGE_NO AS BIZ_STAGE_NO,\n" +
+				"                    c.BIZ_STAGE_CODE AS BIZ_STAGE_CODE,\n" +
+				"                    c.BIZ_STAGE_NAME AS BIZ_STAGE_NAME,\n" +
+				"                    c.BIZ_TIME AS BIZ_TIME,\n" +
+				"                    c.BIZ_STATUS_CODE AS BIZ_STATUS_CODE,\n" +
+				"                    c.BIZ_STATUS AS BIZ_STATUS,\n" +
+				"                    c.BIZ_STATUS_IFFECTIVE AS BIZ_STATUS_IFFECTIVE,\n" +
+				"                    c.BIZ_STATUS_DESC AS BIZ_STATUS_DESC,\n" +
+				"                    c.LASTUPDATEDDT AS LASTUPDATEDDT, -- 重命名以确保后续使用 ROW 时不需要 '.'\n" +
+				"                    CAST(c.ISDELETED AS INT) AS ISDELETED -- 自动转换类型\n" +
+				"                  FROM CTNR AS c\n" +
+				"                    LEFT JOIN ORACLE_SUBSCRIBE_PARAM FOR SYSTEM_TIME as OF c.`proctime` AS p\n" +
+				"                      ON 'DATA_FLINK_FULL_FLINK_TRACING_CUSCHK'=p.APP_NAME AND 'DM.TRACK_BIZ_STATUS_CTNR'=p.TABLE_NAME\n" +
+				"                        WHERE p.ISCURRENT = 1 AND p.SUBSCRIBE_TYPE = 'I'\n" +
 				"                ) t");
 		
 		statementSet.execute();

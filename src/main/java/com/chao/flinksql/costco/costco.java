@@ -279,9 +279,9 @@ public class costco {
                 "                                                                RefrigeratedContainerInformation ,\n" +
                 "                                                                BillOfLadingInformation)");
 
-//        Table costcoCtn_table = tEnv.sqlQuery("select * from costcoCtn");
-//        tEnv.toAppendStream(costcoCtn_table, Row.class).print();
-//        env.execute();
+        Table costcoCtn_table = tEnv.sqlQuery("select * from costcoCtn");
+        tEnv.toAppendStream(costcoCtn_table, Row.class).print();
+        env.execute();
 
         // TODO 装箱(箱)
         tEnv.executeSql("" +

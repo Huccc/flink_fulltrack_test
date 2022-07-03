@@ -275,8 +275,8 @@ public class departure2 {
 				"       GID\n" +
 				"FROM TMP_DEP_TRACK_INFO");
 
-//		Table TRACK_DEP_INFO = tEnv.sqlQuery("select * from TRACK_DEP_INFO");
-//		tEnv.toAppendStream(TRACK_DEP_INFO, Row.class).print();
+		Table TRACK_DEP_INFO = tEnv.sqlQuery("select * from TRACK_DEP_INFO");
+		tEnv.toAppendStream(TRACK_DEP_INFO, Row.class).print();
 //		env.execute();
 		
 		// TODO 匹配提单表维表
@@ -314,7 +314,7 @@ public class departure2 {
 
 		Table BILL_INFO = tEnv.sqlQuery("select * from BILL_INFO");
 		tEnv.toAppendStream(BILL_INFO, Row.class).print();
-		env.execute();
+//		env.execute();
 		
 		tEnv.executeSql("" +
 				"create view BILL AS\n" +
@@ -353,8 +353,8 @@ public class departure2 {
 				"                                             WHEN 'C8.4s' THEN 'E_vslDep_dynBulk'\n" +
 				"                                             ELSE 'N/A' END) = dim2.key and 'SUB_STAGE_NAME' = dim2.hashkey\n");
 
-//		Table BILL = tEnv.sqlQuery("select * from BILL");
-//		tEnv.toAppendStream(BILL, Row.class).print();
+		Table BILL = tEnv.sqlQuery("select * from BILL");
+		tEnv.toAppendStream(BILL, Row.class).print();
 //		env.execute();
 		
 		// TODO 匹配箱表维表
