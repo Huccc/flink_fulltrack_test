@@ -30,7 +30,7 @@ public class mt4101_test {
 				"  'format' = 'json'\n" +
 				")");
 		
-		String msg1 = "{\"Response\":{\"BorderTransportMeans\":{\"JourneyID\":\"1111315\",\"ID\":\"UN89052320\"},\"Consignment\":[{\"AssociatedTransportDocument\":{\"ID\":\"\"},\"TransportContractDocument\":{\"ID\":\"HDM520111315\"},\"ResponseType\":{\"Text\":\"2313\",\"Code\":\"02\"}}]},\"Head\":{\"ReceiverID\":\"2200132208081\",\"SendTime\":\"20221105075451211\",\"Version\":\"1.0\",\"FunctionCode\":\"3\",\"SenderID\":\"2200\",\"MessageType\":\"MT4101\",\"MessageID\":\"SEA1_2200132238475_2020111315\"},\"ExtraInfo\":{\"receiver\":\"edi\",\"sender\":\"CNC2200\"}}\n";
+		String msg1 = "{\"Response\":{\"BorderTransportMeans\":{\"JourneyID\":\"1111315\",\"ID\":\"UN89052320\"},\"Consignment\":[{\"AssociatedTransportDocument\":{\"ID\":\"\"},\"TransportContractDocument\":{\"ID\":\"HDM520111315\"},\"ResponseType\":{\"Text\":\"2313\",\"Code\":\"02\"}}]},\"Head\":{\"ReceiverID\":\"2200132208081\",\"SendTime\":\"20221202075451211\",\"Version\":\"1.0\",\"FunctionCode\":\"3\",\"SenderID\":\"2200\",\"MessageType\":\"MT4101\",\"MessageID\":\"SEA1_2200132238475_2020111315\"},\"ExtraInfo\":{\"receiver\":\"edi\",\"sender\":\"CNC2200\"}}\n";
 		
 		String msg2 = "{\"Response\":{\"BorderTransportMeans\":{\"JourneyID\":\"111315\",\"ID\":\"UN111315\"},\"Consignment\":[{\"AssociatedTransportDocument\":{\"ID\":\"\"},\"TransportContractDocument\":{\"ID\":\"HDM30111315\"},\"ResponseType\":{\"Text\":\"23删除13\",\"Code\":\"01\"}}]},\"Head\":{\"ReceiverID\":\"2200132208081\",\"SendTime\":\"20201104075460000\",\"Version\":\"1.0\",\"FunctionCode\":\"11\",\"SenderID\":\"2200\",\"MessageType\":\"MT2101\",\"MessageID\":\"SEA_2200132238475_2020111315\"},\"ExtraInfo\":{\"receiver\":\"edi\",\"sender\":\"CNC2200\"}}";
 		

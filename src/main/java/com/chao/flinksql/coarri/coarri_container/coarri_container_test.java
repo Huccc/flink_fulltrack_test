@@ -31,13 +31,13 @@ public class coarri_container_test {
 				"        \"VesselVoyageInformation\":{\n" +
 				"            \"LoadStartTime\":\"202105201435\",\n" +
 				"            \"VslCallSign\":\"DSRJ7\",\n" +
-				"            \"Voyage\":\"2221SI\",\n" +
+				"            \"Voyage\":\"020W\",\n" +
 				"            \"DchgStartTime\":\"202011300036\",\n" +
 				"            \"EstDeptDate\":\"202011301430\",\n" +
 				"            \"ArrivalDate\":\"202011300036\",\n" +
 				"            \"VslOprCode\":\"SNKO\",\n" +
-//				"            \"VslName\":\"9741372\",\n" +
-				"            \"VslName\":\"GLORY TIANJIN\",\n" +
+				"            \"VslName\":\"SEASPAN OCEANIA\",\n" +
+//				"            \"VslName\":\"GLORY TIANJIN\",\n" +
 //				"            \"IEFlag\":\"E\",\n" +
 				"            \"IEFlag\":\"I\",\n" +
 				"            \"VslNtlCode\":\"KR\",\n" +

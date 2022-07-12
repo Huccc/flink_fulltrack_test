@@ -113,7 +113,7 @@ public class mt5102_test_mt5102 {
 				"            \"JourneyID\": \"MT5102001\",\n" +
 				"            \"TypeCode\": \"1\",\n" +
 //				"            \"CompletedDateTime\": \"202203101201271\",\n" +
-				"            \"CompletedDateTime\": \"20220511120129\",\n" +
+				"            \"CompletedDateTime\": \"20221111120329\",\n" +
 				"            \"LoadingLocation\": {\n" +
 				"                \"ID\": \"00027/2202\"\n" +
 				"            },\n" +

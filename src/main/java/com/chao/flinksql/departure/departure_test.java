@@ -45,6 +45,6 @@ public class departure_test {
 				"'DECLARE_TEST' as msgType," +
 				"'LEAVE_PORT' as bizUniqueId," +
 				"'SRC_SHIPDYN.DYN_DEP_DECLARE' as destination," +
-				"'{\"ID\":9,\"BUSSINESS_TYPE\":\"01\",\"VESSELNAME_CN\":\"亿通国际\",\"VESSELNAME_EN\":\"CHUN JIN\",\"IMO_NO\":\"9113173\",\"VESSEL_CALL\":\"2124W\",\"VOYAGE_OUT\":\"YA0011\",\"MSA_VESSEL_CODE\":\"B9629419\",\"DEPARTURE_DATE\":null,\"OP_TYPE\":\"I\"}' as parseData");
+				"'{\"ID\":9,\"BUSSINESS_TYPE\":\"01\",\"VESSELNAME_CN\":\"亿通国际\",\"VESSELNAME_EN\":\"CHUN JIN\",\"IMO_NO\":\"9113173\",\"VESSEL_CALL\":\"2124W\",\"VOYAGE_OUT\":\"YA0011\",\"MSA_VESSEL_CODE\":\"B9629419\",\"DEPARTURE_DATE\":\"2022-09-07 12:16:17\",\"OP_TYPE\":\"I\"}' as parseData");
 	}
 }

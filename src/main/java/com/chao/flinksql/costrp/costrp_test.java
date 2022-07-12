@@ -60,7 +60,7 @@ public class costrp_test {
                 "                \"ContainerInformation\":[\n" +
                 "                    {\n" +
                 "                        \"OverWidthLeft\":\"\",\n" +
-                "                        \"DateOfPacking\":\"202011290817\",\n" +
+                "                        \"DateOfPacking\":\"202012010828\",\n" +
                 "                        \"OverWidthRight\":\"\",\n" +
                 "                        \"AddressOfTheContainerStuffingParty\":\"\",\n" +
                 "                        \"ContainerNo\":\"CTN001\",\n" +
@@ -122,7 +122,7 @@ public class costrp_test {
                 "                        \"InPortInfo\":{\n" +
                 "                            \"RecordId\":\"55\",\n" +
                 "                            \"CodeOfPort_InLocation\":\"00107/2225\",\n" +
-                "                            \"TimeOfPort_In\":\"202011290817\"\n" +
+                "                            \"TimeOfPort_In\":\"202111290802\"\n" +
                 "                        },\n" +
                 "                        \"ContainerOperatorCode\":\"COSCO\",\n" +
                 "                        \"PortInMark\":\"Y\",\n" +

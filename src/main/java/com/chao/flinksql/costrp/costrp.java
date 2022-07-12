@@ -24,7 +24,8 @@ public class costrp {
                 "  bizUniqueId STRING,\n" +
                 "  destination STRING,\n" +
                 "  parseData STRING,\n" +
-                "  LASTUPDATEDDT AS PROCTIME()\n" +
+                "  LASTUPDATEDDT AS PROCTIME() + INTERVAL '8' HOURS,\n" +
+                "  wintime AS PROCTIME()\n" +
                 ") WITH (\n" +
                 "'connector' = 'kafka',\n" +
                 "  'topic' = 'source_topic',\n" +
@@ -45,7 +46,7 @@ public class costrp {
         tEnv.createTemporarySystemFunction("parseCOSTRP", JsonArrayToRowInCOSTRP.class);
 
         tEnv.executeSql("create view parseTB as\n" +
-                "  select msgId,LASTUPDATEDDT,parseCOSTRP(concat('{\"message\":',parseData,'}')).message as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+                "  select msgId,LASTUPDATEDDT,parseCOSTRP(concat('{\"message\":',parseData,'}')).message as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID,wintime\n" +
                 "  from kafka_source_data\n" +
                 "  where bizId='COSTRP' and msgType='message_data'");
 
@@ -54,7 +55,7 @@ public class costrp {
 //        env.execute();
 
         tEnv.executeSql("create view originalTB as\n" +
-                "  select msgId,GID,HeadRecord,Memo,TailRecord,LASTUPDATEDDT\n" +
+                "  select msgId,GID,wintime,HeadRecord,Memo,TailRecord,LASTUPDATEDDT\n" +
                 "  from (select * from parseTB where pData is not null) as tempTB1 cross join unnest(pData) AS pData(HeadRecord,Memo,TailRecord)");
 
 //        Table originalTB_table = tEnv.sqlQuery("select * from originalTB");
@@ -63,7 +64,7 @@ public class costrp {
 
         tEnv.executeSql("" +
                 "create view commonTB as\n" +
-                "select msgId,GID,VslVoyFields,ContainerInformation,FileFunction,Memo,TailRecord,LASTUPDATEDDT\n" +
+                "select msgId,GID,wintime,VslVoyFields,ContainerInformation,FileFunction,Memo,TailRecord,LASTUPDATEDDT\n" +
                 "from (select * from originalTB where HeadRecord is not null) as tempTB2 cross join unnest(HeadRecord) AS HeadRecord(RecordId,MessageType,FileDescription,FileFunction,EdiCodeOfSender,EdiCodeOfRecipient,FileCreateTime,CopTo,VslVoyFields,TotalOfContainer,ContainerInformation)");
 
 //        Table commonTB_table = tEnv.sqlQuery("select * from commonTB");
@@ -116,7 +117,7 @@ public class costrp {
         // TODO 获取公共字段
         tEnv.executeSql("" +
                 "create view costrpCommon as\n" +
-                "  select msgId,GID,\n" +
+                "  select msgId,GID,wintime,\n" +
                 "         if(VslVoyFields.VesselImoNo <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(VslVoyFields.VesselImoNo, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') as VSL_IMO_NO, --imo\n" +
                 "         if(VslVoyFields.VesselName <> '', UPPER(TRIM(REGEXP_REPLACE(VslVoyFields.VesselName, '[\\t\\n\\r]', ''))), 'N/A') as VSL_NAME, --船名\n" +
                 "         if(VslVoyFields.Voyage <> '', UPPER(TRIM(REGEXP_REPLACE(VslVoyFields.Voyage, '[\\t\\n\\r]', ''))), 'N/A') as VOYAGE, --航次\n" +
@@ -154,40 +155,92 @@ public class costrp {
 //        tEnv.toAppendStream(costrpCommonWithDim_table, Row.class).print();
 //        env.execute();
 
-        // TODO 结果箱表    展开箱，获取箱号
+        // TODO 结果箱表_tmp    展开箱，获取箱号
         tEnv.executeSql("" +
-                "create view ctnrTB as\n" +
+                "create view ctnrTB_tmp as\n" +
                 "  select\n" +
-                "  msgId,GID,VSL_IMO_NO,VSL_NAME,VOYAGE,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,\n" +
+                "  msgId,GID,wintime,VSL_IMO_NO,VSL_NAME,VOYAGE,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,\n" +
                 "  BIZ_STATUS_CODE,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,ACCURATE_IMONO,\n" +
                 "  ACCURATE_VSLNAME,BIZ_STAGE_NAME,BIZ_STATUS,\n" +
                 "  if(ContainerNo <> '', UPPER(TRIM(REGEXP_REPLACE(ContainerNo, '[\\t\\n\\r]', ''))), 'N/A') as CTNR_NO, --箱号\n" +
                 "  TO_TIMESTAMP(InPortInfo.TimeOfPort_In,'yyyyMMddHHmm') as BIZ_TIME, --业务发生时间\n" +
+                "  BlNo,\n" +
                 "  uuid() as UUID, --UUID\n" +
                 "  1 as BIZ_STATUS_IFFECTIVE --状态有效标记\n" +
                 "  from (select * from costrpCommonWithDim where ContainerInformation is not null) as tempTB2\n" +
                 "  cross join unnest(ContainerInformation) AS ContainerInformation(RecordId,ContainerNo,ContainerSize,ContainerStatus,DateOfPacking,ModeOfTransport,ContainerOperatorCode,ContainerOperator,ContainerTareWeight,TotalWeightOfGoods,TotalVolume,TotalNumberOfPackages,TotalWeight,EirNo,OverLengthFront,OverLengthBack,OverWidthRight,OverWidthLeft,OverHeight,ContainerStuffingParty,AddressOfTheContainerStuffingParty,LicensePlateNoOfTrailer,PortInMark,SealNo,LoadDischargePort,DangerousInformation,CargoInformation,InPortInfo,BlNo)");
 
-        Table ctnrTB_table = tEnv.sqlQuery("select * from ctnrTB");
-        tEnv.toAppendStream(ctnrTB_table, Row.class).print();
+        Table ctnrTB_tmp = tEnv.sqlQuery("select * from ctnrTB_tmp");
+        tEnv.toAppendStream(ctnrTB_tmp, Row.class).print();
 //        env.execute();
 
-        // TODO 结果提单表   关联箱单关系表获取提单号
+        // TODO 获取业务主键的最大业务发生时间
         tEnv.executeSql("" +
-                "create view billTB as\n" +
-                "  select ctnrTB.msgId,ctnrTB.GID,\n" +
-                "         ctnrTB.VSL_IMO_NO,ctnrTB.VSL_NAME,ctnrTB.VOYAGE,ctnrTB.ACCURATE_IMONO,ctnrTB.ACCURATE_VSLNAME,\n" +
-                "         obcd.BL_NO,obcd.MASTER_BL_NO,ctnrTB.I_E_MARK,ctnrTB.BIZ_STAGE_NO,ctnrTB.BIZ_STAGE_CODE,\n" +
-                "         ctnrTB.BIZ_STAGE_NAME,ctnrTB.BIZ_TIME,ctnrTB.BIZ_STATUS_CODE,ctnrTB.BIZ_STATUS,\n" +
-                "         ctnrTB.BIZ_STATUS_DESC,ctnrTB.LASTUPDATEDDT,ctnrTB.ISDELETED,ctnrTB.UUID,ctnrTB.BIZ_STATUS_IFFECTIVE\n" +
-                "  from ctnrTB left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF ctnrTB.LASTUPDATEDDT as obcd\n" +
-                "  on ctnrTB.VSL_IMO_NO=obcd.VSL_IMO_NO\n" +
-                "  and ctnrTB.VOYAGE=obcd.VOYAGE\n" +
-                "  and ctnrTB.CTNR_NO=obcd.CTNR_NO\n" +
-                "  where obcd.BL_NO is not null and obcd.ISDELETED=0");
+                "create view ctnrTB_win as\n" +
+                "select\n" +
+                "  VSL_IMO_NO,\n" +
+                "  VOYAGE,\n" +
+                "  CTNR_NO,\n" +
+                "  BIZ_STAGE_NO,\n" +
+                "  max(BIZ_TIME) as BIZ_TIME\n" +
+                "FROM ctnrTB_tmp\n" +
+                "GROUP BY\n" +
+                "  TUMBLE(wintime, INTERVAL '1' minute),\n" +
+                "  VSL_IMO_NO,\n" +
+                "  VOYAGE,\n" +
+                "  CTNR_NO,\n" +
+                "  BIZ_STAGE_NO");
 
-        Table billTB_table = tEnv.sqlQuery("select * from billTB");
-        tEnv.toAppendStream(billTB_table, Row.class).print();
+        Table ctnrTB_win = tEnv.sqlQuery("select * from ctnrTB_win");
+        tEnv.toAppendStream(ctnrTB_win, Row.class).print();
+//        env.execute();
+
+        // TODO 获取业务主键最大业务发生时间的所有字段，结果箱表
+        tEnv.executeSql("" +
+                "create view ctnrTB as\n" +
+                "select ctnrTB_tmp.*\n" +
+                "from  ctnrTB_tmp join ctnrTB_win\n" +
+                "                           on ctnrTB_tmp.VSL_IMO_NO=ctnrTB_win.VSL_IMO_NO\n" +
+                "                           and ctnrTB_tmp.VOYAGE=ctnrTB_win.VOYAGE\n" +
+                "                           and ctnrTB_tmp.CTNR_NO=ctnrTB_win.CTNR_NO\n" +
+                "                           and ctnrTB_tmp.BIZ_STAGE_NO=ctnrTB_win.BIZ_STAGE_NO\n" +
+                "                           and ctnrTB_tmp.BIZ_TIME=ctnrTB_win.BIZ_TIME");
+
+        Table ctnrTB = tEnv.sqlQuery("select * from ctnrTB");
+        tEnv.toAppendStream(ctnrTB, Row.class).print();
+//        env.execute();
+
+        // TODO 结果提单表，展开提单，获取提单号
+        tEnv.executeSql("" +
+                "CREATE VIEW billTB as\n" +
+                "select\n" +
+                " msgId,GID,VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,\n" +
+                " 'N/A' as BL_NO,\n" +
+                "  if(Master_BL_No <> '', UPPER(TRIM(REGEXP_REPLACE(Master_BL_No, '[\\t\\n\\r]', ''))), 'N/A') as MASTER_BL_NO, --箱号\n" +
+                " I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE\n" +
+                "from (select * from ctnrTB where BlNo is not null) as tempTB1\n" +
+                "cross join unnest(BlNo) as BlNo(RecordId,Master_BL_No,PlaceCodeOfDelivery,PlaceOfDelivery,House_BL_No,CargoInformation)");
+
+        Table billTB = tEnv.sqlQuery("select * from billTB");
+        tEnv.toAppendStream(billTB, Row.class).print();
+//        env.execute();
+
+//        // TODO 结果提单表   关联箱单关系表获取提单号
+//        tEnv.executeSql("" +
+//                "create view billTB as\n" +
+//                "  select ctnrTB.msgId,ctnrTB.GID,\n" +
+//                "         ctnrTB.VSL_IMO_NO,ctnrTB.VSL_NAME,ctnrTB.VOYAGE,ctnrTB.ACCURATE_IMONO,ctnrTB.ACCURATE_VSLNAME,\n" +
+//                "         obcd.BL_NO,obcd.MASTER_BL_NO,ctnrTB.I_E_MARK,ctnrTB.BIZ_STAGE_NO,ctnrTB.BIZ_STAGE_CODE,\n" +
+//                "         ctnrTB.BIZ_STAGE_NAME,ctnrTB.BIZ_TIME,ctnrTB.BIZ_STATUS_CODE,ctnrTB.BIZ_STATUS,\n" +
+//                "         ctnrTB.BIZ_STATUS_DESC,ctnrTB.LASTUPDATEDDT,ctnrTB.ISDELETED,ctnrTB.UUID,ctnrTB.BIZ_STATUS_IFFECTIVE\n" +
+//                "  from ctnrTB left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF ctnrTB.LASTUPDATEDDT as obcd\n" +
+//                "  on ctnrTB.VSL_IMO_NO=obcd.VSL_IMO_NO\n" +
+//                "  and ctnrTB.VOYAGE=obcd.VOYAGE\n" +
+//                "  and ctnrTB.CTNR_NO=obcd.CTNR_NO\n" +
+//                "  where obcd.BL_NO is not null and obcd.ISDELETED=0");
+//
+//        Table billTB_table = tEnv.sqlQuery("select * from billTB");
+//        tEnv.toAppendStream(billTB_table, Row.class).print();
 //        env.execute();
 
         // TODO kafka配置表 维表

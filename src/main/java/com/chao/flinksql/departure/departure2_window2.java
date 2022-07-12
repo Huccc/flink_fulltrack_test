@@ -7,7 +7,7 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.types.Row;
 
-public class departure2 {
+public class departure2_window2 {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         EnvironmentSettings settings = EnvironmentSettings.newInstance().inStreamingMode().useBlinkPlanner().build();
@@ -84,7 +84,7 @@ public class departure2 {
         // TODO Oracle配置表 维表
         tEnv.executeSql("" +
                 "CREATE TABLE oracle_subscribe_papam_dim\n" +
-                "(\n" +
+                "(" +
                 "   APP_NAME         STRING,\n" +
                 "   TABLE_NAME       STRING,\n" +
                 "   SUBSCRIBE_TYPE   STRING,\n" +
@@ -257,44 +257,59 @@ public class departure2 {
 //		env.execute();
 
         tEnv.executeSql("" +
-                "CREATE VIEW TRACK_DEP_INFO(\n" +
+                "CREATE VIEW TRACK_DEP_INFO_TMP(\n" +
                 " ID,\n" +
                 " IMO_NO,\n" +
                 " VESSELNAME_EN,\n" +
                 " VOYAGE_IN,\n" +
                 " VOYAGE_OUT,\n" +
                 " DEPARTURE_DATE,\n" +
+                "             BIZ_TIME,\n" +
                 " LASTUPDATEDDT, GID, wintime\n" +
-                " ) AS\n" +
+                ") AS\n" +
                 "SELECT `map`['ID'],\n" +
                 "       `map`['IMO_NO'],\n" +
                 "       `map`['VESSELNAME_EN'],\n" +
                 "       `map`['VOYAGE_IN'],\n" +
                 "       `map`['VOYAGE_OUT'],\n" +
                 "       `map`['DEPARTURE_DATE'],\n" +
+                "       TO_TIMESTAMP(`map`['DEPARTURE_DATE'],'yyyy-MM-dd HH:mm:ss') as BIZ_TIME,\n" +
                 "       LASTUPDATEDDT,\n" +
                 "       GID, wintime\n" +
                 "FROM TMP_DEP_TRACK_INFO");
 
-		Table TRACK_DEP_INFO = tEnv.sqlQuery("select * from TRACK_DEP_INFO");
-		tEnv.toAppendStream(TRACK_DEP_INFO, Row.class).print();
+        Table TRACK_DEP_INFO_TMP = tEnv.sqlQuery("select * from TRACK_DEP_INFO_TMP");
+        tEnv.toAppendStream(TRACK_DEP_INFO_TMP, Row.class).print();
 //		env.execute();
 
-//        // TODO 获取业务主键的最大业务发生时间
-//        tEnv.executeSql("" +
-//                "create view TRACK_DEP_INFO_WIN as\n" +
-//                "select\n" +
-//                "  IMO_NO,\n" +
-//                "  VOYAGE_OUT,\n" +
-//                "  max(DEPARTURE_DATE)\n" +
-//                "FROM TRACK_DEP_INFO\n" +
-//                "GROUP BY\n" +
-//                "  TUMBLE(wintime, INTERVAL '1' minute),\n" +
-//                "  IMO_NO,\n" +
-//                "  VOYAGE_OUT");
-//
-//        Table TRACK_DEP_INFO_WIN = tEnv.sqlQuery("select * from TRACK_DEP_INFO_WIN");
-//        tEnv.toAppendStream(TRACK_DEP_INFO_WIN, Row.class).print();
+        // TODO 获取业务主键的最大业务发生时间
+        tEnv.executeSql("" +
+                "create view TRACK_DEP_INFO_WIN as\n" +
+                "select\n" +
+                "    IMO_NO,\n" +
+                "    VOYAGE_OUT,\n" +
+                "    max(BIZ_TIME) as BIZ_TIME\n" +
+                "FROM TRACK_DEP_INFO_TMP\n" +
+                "GROUP BY\n" +
+                "    TUMBLE(wintime, INTERVAL '1' minute),\n" +
+                "    IMO_NO,\n" +
+                "    VOYAGE_OUT");
+
+        Table TRACK_DEP_INFO_WIN = tEnv.sqlQuery("select * from TRACK_DEP_INFO_WIN");
+        tEnv.toAppendStream(TRACK_DEP_INFO_WIN, Row.class).print();
+//        env.execute();
+
+        // TODO 获取最大业务发生时间的全部数据
+        tEnv.executeSql("" +
+                "create view TRACK_DEP_INFO as\n" +
+                "select TRACK_DEP_INFO_TMP.*\n" +
+                "from  TRACK_DEP_INFO_TMP join TRACK_DEP_INFO_WIN\n" +
+                "                              on TRACK_DEP_INFO_TMP.IMO_NO=TRACK_DEP_INFO_WIN.IMO_NO\n" +
+                "                                  and TRACK_DEP_INFO_TMP.VOYAGE_OUT=TRACK_DEP_INFO_WIN.VOYAGE_OUT\n" +
+                "                                  and TRACK_DEP_INFO_TMP.BIZ_TIME=TRACK_DEP_INFO_WIN.BIZ_TIME");
+
+//        Table TRACK_DEP_INFO = tEnv.sqlQuery("select * from TRACK_DEP_INFO");
+//        tEnv.toAppendStream(TRACK_DEP_INFO, Row.class).print();
 //        env.execute();
 
         // TODO 匹配提单表维表
@@ -319,7 +334,7 @@ public class departure2 {
                 "       if(UPPER(TRIM(REGEXP_REPLACE(TDI.VOYAGE_OUT, '[\\t\\n\\r]', ''))) <> '',\n" +
                 "          UPPER(TRIM(REGEXP_REPLACE(TDI.VOYAGE_OUT, '[\\t\\n\\r]', ''))), 'N/A') as VOYAGE_OUT,\n" +
                 "       TDI.GID, TDI.wintime,\n" +
-                "       TO_TIMESTAMP(TDI.DEPARTURE_DATE,'yyyy-MM-dd HH:mm:ss') as BIZ_TIME,\n" +
+                "       TDI.BIZ_TIME as BIZ_TIME,\n" +
                 "       TDI.LASTUPDATEDDT\n" +
                 "from TRACK_DEP_INFO as TDI\n" +
                 "     left join ORACLE_TRACK_BIZ_STATUS_BILL FOR SYSTEM_TIME AS OF TDI.LASTUPDATEDDT AS dim1\n" +
@@ -335,7 +350,7 @@ public class departure2 {
 //		env.execute();
 
         tEnv.executeSql("" +
-                "create view BILL_TMP AS\n" +
+                "create view BILL AS\n" +
                 "select BI.GID, BI.wintime,\n" +
                 "       BI.VSL_IMO_NO,\n" +
                 "       BI.VSL_NAME,\n" +
@@ -371,48 +386,10 @@ public class departure2 {
                 "                                             WHEN 'C8.4s' THEN 'E_vslDep_dynBulk'\n" +
                 "                                             ELSE 'N/A' END) = dim2.key and 'SUB_STAGE_NAME' = dim2.hashkey\n");
 
-        Table BILL_TMP = tEnv.sqlQuery("select * from BILL_TMP");
-        tEnv.toAppendStream(BILL_TMP, Row.class).print();
+		Table BILL = tEnv.sqlQuery("select * from BILL");
+		tEnv.toAppendStream(BILL, Row.class).print();
 //		env.execute();
 
-        // TODO 获取业务主键的最大业务发生时间
-        tEnv.executeSql("" +
-                "create view BILL_TMP_WIN as\n" +
-                "select\n" +
-                "  VSL_IMO_NO,\n" +
-                "  VOYAGE,\n" +
-                "  BL_NO,\n" +
-                "  BIZ_STAGE_NO,\n" +
-                "  BIZ_STATUS_CODE,\n" +
-                "  max(BIZ_TIME) as BIZ_TIME\n" +
-                "FROM BILL_TMP\n" +
-                "GROUP BY\n" +
-                "  TUMBLE(wintime, INTERVAL '1' minute),\n" +
-                "  VSL_IMO_NO,\n" +
-                "  VOYAGE,\n" +
-                "  BL_NO,\n" +
-                "  BIZ_STAGE_NO,\n" +
-                "  BIZ_STATUS_CODE");
-
-        Table BILL_TMP_WIN = tEnv.sqlQuery("select * from BILL_TMP_WIN");
-        tEnv.toAppendStream(BILL_TMP_WIN, Row.class).print();
-        env.execute();
-
-        // TODO 获取业务主键最大业务发生时间的所有字段,结果表
-        tEnv.executeSql("" +
-                "create view BILL as\n" +
-                "select BILL_TMP.*\n" +
-                "from  BILL_TMP join BILL_TMP_WIN\n" +
-                "                           on BILL_TMP.VSL_IMO_NO=BILL_TMP_WIN.VSL_IMO_NO\n" +
-                "                           and BILL_TMP.VOYAGE=BILL_TMP_WIN.VOYAGE\n" +
-                "                           and BILL_TMP.BL_NO=BILL_TMP_WIN.BL_NO\n" +
-                "                           and BILL_TMP.BIZ_STAGE_NO=BILL_TMP_WIN.BIZ_STAGE_NO\n" +
-                "                           and BILL_TMP.BIZ_STATUS_CODE=BILL_TMP_WIN.BIZ_STATUS_CODE\n" +
-                "                           and BILL_TMP.BIZ_TIME=BILL_TMP_WIN.BIZ_TIME");
-
-//        Table BILL = tEnv.sqlQuery("select * from BILL");
-//        tEnv.toAppendStream(BILL,Row.class).print();
-//        env.execute();
 
         // TODO 匹配箱表维表
         tEnv.executeSql("" +

@@ -24,7 +24,8 @@ public class mt4101 {
 				"  bizUniqueId STRING,\n" +
 				"  destination STRING,\n" +
 				"  parseData STRING,\n" +
-				"  LASTUPDATEDDT AS (PROCTIME() + INTERVAL '8' HOUR)\n" +
+				"  LASTUPDATEDDT AS (PROCTIME() + INTERVAL '8' HOUR),\n" +
+				"  wintime AS PROCTIME()\n" +
 				") WITH (\n" +
 				"  'connector' = 'kafka',\n" +
 				"  'topic' = 'topic-bdpcollect-msg-parse-result',\n" +
@@ -115,7 +116,7 @@ public class mt4101 {
 				"create view source9999TB as\n" +
 				"select\n" +
 				"  msgId, LASTUPDATEDDT,\n" +
-				"  parseMT4101fromMT9999(parseData) as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+				"  parseMT4101fromMT9999(parseData) as pData,concat(msgId, '^', bizUniqueId, '^', bizId) as GID,wintime\n" +
 				"from kafka_source_data where bizId='MT9999' and msgType='message_data'");
 		
 //		tEnv.executeSql("" +
@@ -133,7 +134,7 @@ public class mt4101 {
 		tEnv.executeSql("" +
 				"create view common9999TB as\n" +
 				"select\n" +
-				"  msgId,GID,LASTUPDATEDDT,\n" +
+				"  msgId,GID,wintime,LASTUPDATEDDT,\n" +
 				"  pData.Head.MessageID as Head_MessageID,\n" +
 				"  pData.Head.MessageType as MessageType,\n" +
 				"  if(REPLACE(UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.ID, '[\\t\\n\\r]', ''))),'UN','') <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(pData.Response.BorderTransportMeans.ID, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') as VSL_IMO_NO,\n" +
@@ -151,7 +152,7 @@ public class mt4101 {
 		tEnv.executeSql("" +
 				"create view mt9999withBill as\n" +
 				"select\n" +
-				"  msgId, GID, LASTUPDATEDDT, Head_MessageID, VSL_IMO_NO, VOYAGE, BIZ_TIME, ISDELETED, --'I' as I_E_MARK,\n" +
+				"  msgId, GID, wintime, LASTUPDATEDDT, Head_MessageID, VSL_IMO_NO, VOYAGE, BIZ_TIME, ISDELETED, --'I' as I_E_MARK,\n" +
 				"  if(TransportContractDocument.ID <> '', UPPER(TRIM(REGEXP_REPLACE(TransportContractDocument.ID, '[\\t\\n\\r]', ''))), 'N/A') as BL_NO,\n" +
 				"  'N/A' as MASTER_BL_NO,\n" +
 				"  ResponseType.Code as BIZ_STATUS_CODE,\n" +
@@ -163,11 +164,11 @@ public class mt4101 {
 //		tEnv.toAppendStream(mt9999withBill_table, Row.class).print();
 //		env.execute();
 		
-		// TODO 提单结果表
+		// TODO 提单结果表_tmp
 		tEnv.executeSql("" +
-				"create view resBill as\n" +
+				"create view resBill_tmp as\n" +
 				"select\n" +
-				"  msgId, GID, VSL_IMO_NO,\n" +
+				"  msgId, GID, wintime, VSL_IMO_NO,\n" +
 				"  if(dim2.res <> '', dim2.res, 'N/A') as VSL_NAME,\n" +
 				"  VOYAGE,\n" +
 				"  if(dim1.res <> '', dim1.res, 'N/A') as ACCURATE_IMONO,\n" +
@@ -192,9 +193,45 @@ public class mt4101 {
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=C8.5&SUB_STAGE_CODE=E_cusDecl_mt4101') = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999withBill.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999withBill.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 		
-		Table resBill_table = tEnv.sqlQuery("select * from resBill");
-		tEnv.toAppendStream(resBill_table, Row.class).print();
+		Table resBill_tmp = tEnv.sqlQuery("select * from resBill_tmp");
+		tEnv.toAppendStream(resBill_tmp, Row.class).print();
 //		env.execute();
+
+		// TODO 获取业务主键的最大业务发生时间
+		tEnv.executeSql("" +
+				"create view resBill_win as\n" +
+				"select\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  BL_NO,\n" +
+				"  BIZ_STAGE_NO,\n" +
+				"  max(BIZ_TIME) as BIZ_TIME\n" +
+				"FROM resBill_tmp\n" +
+				"GROUP BY\n" +
+				"  TUMBLE(wintime, INTERVAL '1' minute),\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  BL_NO,\n" +
+				"  BIZ_STAGE_NO");
+
+		Table resBill_win = tEnv.sqlQuery("select * from resBill_win");
+		tEnv.toAppendStream(resBill_win, Row.class).print();
+//        env.execute();
+
+		// TODO 获取业务主键最大业务发生时间的所有字段，结果提单表
+		tEnv.executeSql("" +
+				"create view resBill as\n" +
+				"select resBill_tmp.*\n" +
+				"from  resBill_tmp join resBill_win\n" +
+				"                           on resBill_tmp.VSL_IMO_NO=resBill_win.VSL_IMO_NO\n" +
+				"                           and resBill_tmp.VOYAGE=resBill_win.VOYAGE\n" +
+				"                           and resBill_tmp.BL_NO=resBill_win.BL_NO\n" +
+				"                           and resBill_tmp.BIZ_STAGE_NO=resBill_win.BIZ_STAGE_NO\n" +
+				"                           and resBill_tmp.BIZ_TIME=resBill_win.BIZ_TIME");
+
+		Table resBill = tEnv.sqlQuery("select * from resBill");
+		tEnv.toAppendStream(resBill, Row.class).print();
+//        env.execute();
 		
 		// TODO Oracle sink表，提单表
 		tEnv.executeSql("" +

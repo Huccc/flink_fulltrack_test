@@ -24,7 +24,8 @@ public class costco {
                 "  bizUniqueId STRING,\n" +
                 "  destination STRING,\n" +
                 "  parseData STRING,\n" +
-                "  `proctime` AS PROCTIME()\n" +
+                "  `proctime` AS PROCTIME(),\n" +
+                "  wintime AS PROCTIME()\n" +
                 ") WITH (\n" +
                 "  'connector' = 'kafka',\n" +
                 "  'topic' = 'data-xpq-msg-parse-result',\n" +
@@ -226,7 +227,7 @@ public class costco {
                 "create view costcoTB as\n" +
                 "select  msgId,\n" +
                 "        JSON_TO_ROW_IN_COSTCO('{\"Msg\":' || parseData || '}') as pData,\n" +
-                "        `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+                "        `proctime`,concat(msgId, '^', bizUniqueId, '^', bizId) as GID,wintime\n" +
                 "from kafka_source_data\n" +
                 "WHERE msgType = 'message_data' AND bizId = 'COSTCO'");
 
@@ -238,7 +239,7 @@ public class costco {
         tEnv.executeSql("" +
                 "create view costcoCtn as\n" +
                 "select\n" +
-                "    msgId AS MSGID,GID,\n" +
+                "    msgId AS MSGID,GID,wintime,\n" +
                 "    `proctime`,\n" +
                 "    if(Ctn.DateOfPacking <> '',\n" +
                 "        TO_TIMESTAMP(substr(Ctn.DateOfPacking,0,12) || '00.0', 'yyyyMMddHHmmss.S'),\n" +
@@ -279,13 +280,13 @@ public class costco {
                 "                                                                RefrigeratedContainerInformation ,\n" +
                 "                                                                BillOfLadingInformation)");
 
-        Table costcoCtn_table = tEnv.sqlQuery("select * from costcoCtn");
-        tEnv.toAppendStream(costcoCtn_table, Row.class).print();
-        env.execute();
+//        Table costcoCtn_table = tEnv.sqlQuery("select * from costcoCtn");
+//        tEnv.toAppendStream(costcoCtn_table, Row.class).print();
+//        env.execute();
 
         // TODO 装箱(箱)
         tEnv.executeSql("" +
-                "create view packing_costco_ctn as\n" +
+                "create view packing_costco_ctn_tmp as\n" +
                 "select temp4.*,\n" +
                 "  if(dim1.res <> '', dim1.res, if(dim5.res <> '', dim5.res, 'N/A')) as ACCURATE_IMONO, --标准IMO\n" +
                 "  if(dim2.res <> '', dim2.res, if(dim6.res <> '', dim6.res, 'N/A')) as ACCURATE_VSLNAME, --标准船名\n" +
@@ -296,6 +297,7 @@ public class costco {
                 "    select\n" +
                 "        costcoCtn.MSGID AS MSGID,\n" +
                 "        costcoCtn.GID AS GID,\n" +
+                "        costcoCtn.wintime AS wintime,\n" +
                 "        costcoCtn.VesselImoNo as VSL_IMO_NO, --船舶IMO\n" +
                 "        costcoCtn.VesselName as VSL_NAME, --船名\n" +
                 "        costcoCtn.Voyage as VOYAGE, --航次\n" +
@@ -321,8 +323,44 @@ public class costco {
                 "left join redis_dim FOR SYSTEM_TIME AS OF temp4.`proctime` as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=',temp4.BIZ_STAGE_NO,'&SUB_STAGE_CODE=',temp4.BIZ_STAGE_CODE) = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
                 "left join redis_dim FOR SYSTEM_TIME AS OF temp4.`proctime` as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=load_status&TYPE_CODE=',temp4.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 
-//        Table packing_costco_ctn_table = tEnv.sqlQuery("select * from packing_costco_ctn");
-//        tEnv.toAppendStream(packing_costco_ctn_table, Row.class).print();
+        Table packing_costco_ctn_tmp = tEnv.sqlQuery("select * from packing_costco_ctn_tmp");
+        tEnv.toAppendStream(packing_costco_ctn_tmp, Row.class).print();
+//        env.execute();
+
+        // TODO 获取业务主键的最大业务发生时间
+        tEnv.executeSql("" +
+                "create view packing_costco_ctn_win as\n" +
+                "select\n" +
+                "  VSL_IMO_NO,\n" +
+                "  VOYAGE,\n" +
+                "  CTNR_NO,\n" +
+                "  BIZ_STAGE_NO,\n" +
+                "  max(BIZ_TIME) as BIZ_TIME\n" +
+                "FROM packing_costco_ctn_tmp\n" +
+                "GROUP BY\n" +
+                "  TUMBLE(wintime, INTERVAL '2' minute),\n" +
+                "  VSL_IMO_NO,\n" +
+                "  VOYAGE,\n" +
+                "  CTNR_NO,\n" +
+                "  BIZ_STAGE_NO");
+
+        Table packing_costco_ctn_win = tEnv.sqlQuery("select * from packing_costco_ctn_win");
+        tEnv.toAppendStream(packing_costco_ctn_win, Row.class).print();
+//        env.execute();
+
+        // TODO 获取业务主键最大业务发生时间的所有字段
+        tEnv.executeSql("" +
+                "create view packing_costco_ctn as\n" +
+                "select packing_costco_ctn_tmp.*\n" +
+                "from  packing_costco_ctn_tmp join packing_costco_ctn_win\n" +
+                "                           on packing_costco_ctn_tmp.VSL_IMO_NO=packing_costco_ctn_win.VSL_IMO_NO\n" +
+                "                           and packing_costco_ctn_tmp.VOYAGE=packing_costco_ctn_win.VOYAGE\n" +
+                "                           and packing_costco_ctn_tmp.CTNR_NO=packing_costco_ctn_win.CTNR_NO\n" +
+                "                           and packing_costco_ctn_tmp.BIZ_STAGE_NO=packing_costco_ctn_win.BIZ_STAGE_NO\n" +
+                "                           and packing_costco_ctn_tmp.BIZ_TIME=packing_costco_ctn_win.BIZ_TIME");
+
+        Table packing_costco_ctn = tEnv.sqlQuery("select * from packing_costco_ctn");
+        tEnv.toAppendStream(packing_costco_ctn, Row.class).print();
 //        env.execute();
 
         // TODO 装箱(提单)

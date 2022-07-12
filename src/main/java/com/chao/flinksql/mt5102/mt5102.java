@@ -25,7 +25,8 @@ public class mt5102 {
 				"  bizUniqueId STRING,\n" +
 				"  destination STRING,\n" +
 				"  parseData STRING,\n" +
-				"  LASTUPDATEDDT AS PROCTIME()\n" +
+				"  LASTUPDATEDDT AS PROCTIME() + INTERVAL '8' HOURS,\n" +
+				"  wintime AS PROCTIME()\n" +
 				") WITH (\n" +
 				"  'connector' = 'kafka',\n" +
 				"  'topic' = 'topic-bdpcollect-msg-parse-result',\n" +
@@ -308,7 +309,7 @@ public class mt5102 {
 		tEnv.executeSql("" +
 				"create view mt5102TB as\n" +
 				"select\n" +
-				"    msgId,mt5102_JSON_TO_ROW_IN_MT5102(parseData) as pData,LASTUPDATEDDT,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+				"    msgId,mt5102_JSON_TO_ROW_IN_MT5102(parseData) as pData,LASTUPDATEDDT,concat(msgId, '^', bizUniqueId, '^', bizId) as GID,wintime\n" +
 				"from kafka_source_data\n" +
 				"WHERE msgType = 'message_data'\n" +
 				"    AND bizId = 'MT5102'");
@@ -320,7 +321,7 @@ public class mt5102 {
 		// TODO 获取5102的公共字段和提单
 		tEnv.executeSql("" +
 				"create view mt5102common as\n" +
-				"select msgId, GID, LASTUPDATEDDT, pData.Head.MessageID as Head_MessageID,\n" +
+				"select msgId, GID, wintime, LASTUPDATEDDT, pData.Head.MessageID as Head_MessageID,\n" +
 				"    pData.Head.FunctionCode as Head_FunctionCode,\n" +
 				"    pData.Head.SendTime as Head_SendTime,\n" +
 				"    pData.Declaration.DeclarationOfficeID as DeclarationOfficeID,   pData.Declaration.BorderTransportMeans.JourneyID as BorderTransportMeans_JourneyID,\n" +
@@ -340,7 +341,7 @@ public class mt5102 {
 		// TODO 获取5102的提单信息(展开提单),已处理imo、船名、航次、提单号(取得是总提单号)
 		tEnv.executeSql("" +
 				"create view mt5102bill as\n" +
-				"select msgId,GID,LASTUPDATEDDT,Head_MessageID,Head_FunctionCode,Head_SendTime,DeclarationOfficeID,\n" +
+				"select msgId,GID,wintime,LASTUPDATEDDT,Head_MessageID,Head_FunctionCode,Head_SendTime,DeclarationOfficeID,\n" +
 				"    if(BorderTransportMeans_JourneyID <> '', UPPER(TRIM(REGEXP_REPLACE(BorderTransportMeans_JourneyID, '[\\t\\n\\r]', ''))), 'N/A') as BorderTransportMeans_JourneyID,--航次\n" +
 				"    BorderTransportMeans_TypeCode,\n" +
 				"    if(BorderTransportMeans_ID <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(BorderTransportMeans_ID, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') as BorderTransportMeans_ID,--IMO\n" +
@@ -368,7 +369,7 @@ public class mt5102 {
 		tEnv.executeSql("" +
 				"create view mt9999TB as\n" +
 				"select\n" +
-				"    msgId,LASTUPDATEDDT,mt9999_JSON_TO_ROW_IN_MT5102(parseData) as p9Data,concat(msgId, '^', bizUniqueId, '^', bizId) as GID\n" +
+				"    msgId,LASTUPDATEDDT,mt9999_JSON_TO_ROW_IN_MT5102(parseData) as p9Data,concat(msgId, '^', bizUniqueId, '^', bizId) as GID,wintime\n" +
 				"from kafka_source_data\n" +
 				"WHERE msgType = 'message_data'\n" +
 				"    AND bizId = 'MT9999'");
@@ -377,7 +378,7 @@ public class mt5102 {
 		tEnv.executeSql("" +
 				"create view mt9999common as\n" +
 				"select\n" +
-				"    msgId,GID,LASTUPDATEDDT,\n" +
+				"    msgId,GID,wintime,LASTUPDATEDDT,\n" +
 				"    p9Data.Head.MessageID as MessageID,\n" +
 				"    p9Data.Head.FunctionCode as FunctionCode,\n" +
 				"    p9Data.Head.MessageType as MessageType,\n" +
@@ -394,11 +395,11 @@ public class mt5102 {
 //		tEnv.toAppendStream(mt9999common_table, Row.class).print();
 //		env.execute();
 		
-		// TODO 展开9999的5102回执01提单,已处理IMO、航次、总提单、分提单
+		// TODO 展开9999的5102回执提单,已处理IMO、航次、总提单、分提单
 		tEnv.executeSql("" +
 				"create view mt9999bill as\n" +
 				"select\n" +
-				"    msgId,GID,LASTUPDATEDDT,MessageID,FunctionCode,MessageType,SendTime,\n" +
+				"    msgId,GID,wintime,LASTUPDATEDDT,MessageID,FunctionCode,MessageType,SendTime,\n" +
 				"    if(BorderTransportMeans_ID <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(BorderTransportMeans_ID, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') as BorderTransportMeans_ID,--IMO\n" +
 				"    if(BorderTransportMeans_JourneyID <> '', UPPER(TRIM(REGEXP_REPLACE(BorderTransportMeans_JourneyID, '[\\t\\n\\r]', ''))), 'N/A') as BorderTransportMeans_JourneyID,--航次\n" +
 				"    ResponseType_Code, ResponseType_Text,--整个报文的回执类型\n" +
@@ -414,10 +415,10 @@ public class mt5102 {
 //		tEnv.toAppendStream(mt9999bill_table, Row.class).print();
 ////		env.execute();
 		
-		// TODO 展开9999的5102回执01箱,已处理IMO、航次、箱号
+		// TODO 展开9999的5102回执箱,已处理IMO、航次、箱号
 		tEnv.executeSql("create view mt9999ctnr as\n" +
 				"select\n" +
-				"    msgId,GID,LASTUPDATEDDT,MessageID,FunctionCode,MessageType,SendTime,\n" +
+				"    msgId,GID,wintime,LASTUPDATEDDT,MessageID,FunctionCode,MessageType,SendTime,\n" +
 				"    if(BorderTransportMeans_ID <> '', REPLACE(UPPER(TRIM(REGEXP_REPLACE(BorderTransportMeans_ID, '[\\t\\n\\r]', ''))),'UN',''), 'N/A') as BorderTransportMeans_ID,--IMO\n" +
 				"    if(BorderTransportMeans_JourneyID <> '', UPPER(TRIM(REGEXP_REPLACE(BorderTransportMeans_JourneyID, '[\\t\\n\\r]', ''))), 'N/A') as BorderTransportMeans_JourneyID,--航次\n" +
 				"    ResponseType_Code, ResponseType_Text,--整个报文的回执类型\n" +
@@ -435,9 +436,9 @@ public class mt5102 {
 		// TODO 理货（箱）       直接从mt9999回执中取值
 		// todo 9999的5102回执箱,关联dim表取值(前面已处理IMO、航次、箱号)
 		tEnv.executeSql("" +
-				"create view tallyCtnr as\n" +
+				"create view tallyCtnr_tmp as\n" +
 				"select\n" +
-				"    mt9999ctnr.msgId, mt9999ctnr.GID, mt9999ctnr.BorderTransportMeans_ID as VSL_IMO_NO,--船舶IMO\n" +
+				"    mt9999ctnr.msgId, mt9999ctnr.GID, mt9999ctnr.wintime, mt9999ctnr.BorderTransportMeans_ID as VSL_IMO_NO,--船舶IMO\n" +
 				"    if(dim1.res <> '', dim1.res, 'N/A') as VSL_NAME,--船名\n" +
 				"    mt9999ctnr.BorderTransportMeans_JourneyID as VOYAGE,--航次\n" +
 				"    if(dim2.res <> '', dim2.res, 'N/A') as ACCURATE_IMONO,--标准IMO\n" +
@@ -461,13 +462,49 @@ public class mt5102 {
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999ctnr.LASTUPDATEDDT as dim3 on 'BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=C10.11&SUB_STAGE_CODE=E_cusDecl_MT5102' = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey --业务环节节点名称\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999ctnr.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999ctnr.ctnr_ResponseType_Code) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 
-		Table tallyCtnr_table = tEnv.sqlQuery("select * from tallyCtnr");
-		tEnv.toAppendStream(tallyCtnr_table, Row.class).print();
+		Table tallyCtnr_tmp = tEnv.sqlQuery("select * from tallyCtnr_tmp");
+		tEnv.toAppendStream(tallyCtnr_tmp, Row.class).print();
+		env.execute();
+
+		// TODO 获取业务主键的最大业务发生时间
+		tEnv.executeSql("" +
+				"create view tallyCtnr_win as\n" +
+				"select\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  CTNR_NO,\n" +
+				"  BIZ_STAGE_NO,\n" +
+				"  max(BIZ_TIME) as BIZ_TIME\n" +
+				"FROM tallyCtnr_tmp\n" +
+				"GROUP BY\n" +
+				"  TUMBLE(wintime, INTERVAL '2' minute),\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  CTNR_NO,\n" +
+				"  BIZ_STAGE_NO");
+
+		Table tallyCtnr_win = tEnv.sqlQuery("select * from tallyCtnr_win");
+		tEnv.toAppendStream(tallyCtnr_win, Row.class).print();
 //		env.execute();
-		
+
+		// TODO 获取业务主键最大业务发生时间的所有字段
+		tEnv.executeSql("" +
+				"create view tallyCtnr as\n" +
+				"select tallyCtnr_tmp.*\n" +
+				"from  tallyCtnr_tmp join tallyCtnr_win\n" +
+				"                           on tallyCtnr_tmp.VSL_IMO_NO=tallyCtnr_win.VSL_IMO_NO\n" +
+				"                           and tallyCtnr_tmp.VOYAGE=tallyCtnr_win.VOYAGE\n" +
+				"                           and tallyCtnr_tmp.CTNR_NO=tallyCtnr_win.CTNR_NO\n" +
+				"                           and tallyCtnr_tmp.BIZ_STAGE_NO=tallyCtnr_win.BIZ_STAGE_NO\n" +
+				"                           and tallyCtnr_tmp.BIZ_TIME=tallyCtnr_win.BIZ_TIME");
+
+		Table tallyCtnr = tEnv.sqlQuery("select * from tallyCtnr");
+		tEnv.toAppendStream(tallyCtnr, Row.class).print();
+//		env.execute();
+
 		// TODO 装船（散货）、提单
 		tEnv.executeSql("" +
-				"create view shipment as\n" +
+				"create view shipment_tmp as\n" +
 				"select\n" +
 				"    temp4.*,\n" +
 				"    if(dim1.res <> '', dim1.res, if(dim5.res <> '', dim5.res, 'N/A')) as ACCURATE_IMONO, --标准IMO\n" +
@@ -478,7 +515,7 @@ public class mt5102 {
 				"    1 as BIZ_STATUS_IFFECTIVE\n" +
 				"from\n" +
 				"    (select\n" +
-				"        mt5102bill.msgId, concat(mt5102bill.GID,',',mt9999bill.GID) AS GID, mt5102bill.BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO\n" +
+				"        mt5102bill.msgId, concat(mt5102bill.GID,',',mt9999bill.GID) AS GID, mt5102bill.wintime, mt5102bill.BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO\n" +
 				"        mt5102bill.BorderTransportMeans_Name as VSL_NAME, --船名\n" +
 				"        mt5102bill.BorderTransportMeans_JourneyID as VOYAGE, --航次\n" +
 				"        mt5102bill.TransportContractDocument_ID as BL_NO, --提单号\n" +
@@ -502,8 +539,44 @@ public class mt5102 {
 				"left join redis_dim FOR SYSTEM_TIME AS OF temp4.LASTUPDATEDDT as dim3 on concat('BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=',temp4.BIZ_STAGE_NO,'&SUB_STAGE_CODE=',temp4.BIZ_STAGE_CODE) = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF temp4.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=load_status&TYPE_CODE=',temp4.BIZ_STATUS_CODE) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 		
-		Table shipment_table = tEnv.sqlQuery("select * from shipment");
-		tEnv.toAppendStream(shipment_table, Row.class).print();
+//		Table shipment_tmp = tEnv.sqlQuery("select * from shipment_tmp");
+//		tEnv.toAppendStream(shipment_tmp, Row.class).print();
+//		env.execute();
+
+		// TODO 获取业务主键的最大业务发生时间
+		tEnv.executeSql("" +
+				"create view shipment_win as\n" +
+				"select\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  BL_NO,\n" +
+				"  BIZ_STAGE_NO,\n" +
+				"  max(BIZ_TIME) as BIZ_TIME\n" +
+				"FROM shipment_tmp\n" +
+				"GROUP BY\n" +
+				"  TUMBLE(wintime, INTERVAL '2' minute),\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  BL_NO,\n" +
+				"  BIZ_STAGE_NO");
+
+//		Table shipment_win = tEnv.sqlQuery("select * from shipment_win");
+//		tEnv.toAppendStream(shipment_win, Row.class).print();
+//		env.execute();
+
+		// TODO 获取业务主键最大业务发生时间的所有字段
+		tEnv.executeSql("" +
+				"create view shipment as\n" +
+				"select shipment_tmp.*\n" +
+				"from  shipment_tmp join shipment_win\n" +
+				"                           on shipment_tmp.VSL_IMO_NO=shipment_win.VSL_IMO_NO\n" +
+				"                           and shipment_tmp.VOYAGE=shipment_win.VOYAGE\n" +
+				"                           and shipment_tmp.BL_NO=shipment_win.BL_NO\n" +
+				"                           and shipment_tmp.BIZ_STAGE_NO=shipment_win.BIZ_STAGE_NO\n" +
+				"                           and shipment_tmp.BIZ_TIME=shipment_win.BIZ_TIME");
+
+//		Table shipment = tEnv.sqlQuery("select * from shipment");
+//		tEnv.toAppendStream(shipment, Row.class).print();
 //		env.execute();
 		
 		// TODO 理货(集装箱货)    tallyCtnr与箱单关系表关联
@@ -529,10 +602,11 @@ public class mt5102 {
 		
 		// TODO 理货(散货)
 		tEnv.executeSql("" +
-				"create view tallyBill as\n" +
+				"create view tallyBill_tmp as\n" +
 				"select\n" +
 				"    mt9999bill.msgId,\n" +
 				"    mt9999bill.GID,\n" +
+				"    mt9999bill.wintime,\n" +
 				"    BorderTransportMeans_ID as VSL_IMO_NO, --船舶IMO\n" +
 				"    if(dim1.res <> '', dim1.res, 'N/A') as VSL_NAME, --船名\n" +
 				"    BorderTransportMeans_JourneyID as VOYAGE, --航次\n" +
@@ -558,8 +632,44 @@ public class mt5102 {
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999bill.LASTUPDATEDDT as dim3 on 'BDCP:DIM:DIM_BIZ_STAGE:SUB_STAGE_NO=C10.11&SUB_STAGE_CODE=E_cusDecl_mt5102' = dim3.key and 'SUB_STAGE_NAME' = dim3.hashkey --业务环节节点名称\n" +
 				"left join redis_dim FOR SYSTEM_TIME AS OF mt9999bill.LASTUPDATEDDT as dim4 on concat('BDCP:DIM:DIM_COMMON_MINI:COMMON_CODE=mt9999_ack_type&TYPE_CODE=',mt9999bill.bill_ResponseType_Code) = dim4.key and 'TYPE_NAME' = dim4.hashkey");
 		
-		Table tallyBill_table = tEnv.sqlQuery("select * from tallyBill");
-		tEnv.toAppendStream(tallyBill_table, Row.class).print();
+		Table tallyBill_tmp = tEnv.sqlQuery("select * from tallyBill_tmp");
+		tEnv.toAppendStream(tallyBill_tmp, Row.class).print();
+//		env.execute();
+
+		// TODO 获取业务主键的最大业务发生时间
+		tEnv.executeSql("" +
+				"create view tallyBill_win as\n" +
+				"select\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  BL_NO,\n" +
+				"  BIZ_STAGE_NO,\n" +
+				"  max(BIZ_TIME) as BIZ_TIME\n" +
+				"FROM tallyBill_tmp\n" +
+				"GROUP BY\n" +
+				"  TUMBLE(wintime, INTERVAL '2' minute),\n" +
+				"  VSL_IMO_NO,\n" +
+				"  VOYAGE,\n" +
+				"  BL_NO,\n" +
+				"  BIZ_STAGE_NO");
+
+		Table tallyBill_win = tEnv.sqlQuery("select * from tallyBill_win");
+		tEnv.toAppendStream(tallyBill_win, Row.class).print();
+//		env.execute();
+
+		// TODO 获取业务主键最大业务发生时间的所有字段
+		tEnv.executeSql("" +
+				"create view tallyBill as\n" +
+				"select tallyBill_tmp.*\n" +
+				"from  tallyBill_tmp join tallyBill_win\n" +
+				"                           on tallyBill_tmp.VSL_IMO_NO=tallyBill_win.VSL_IMO_NO\n" +
+				"                           and tallyBill_tmp.VOYAGE=tallyBill_win.VOYAGE\n" +
+				"                           and tallyBill_tmp.BL_NO=tallyBill_win.BL_NO\n" +
+				"                           and tallyBill_tmp.BIZ_STAGE_NO=tallyBill_win.BIZ_STAGE_NO\n" +
+				"                           and tallyBill_tmp.BIZ_TIME=tallyBill_win.BIZ_TIME");
+
+		Table tallyBill = tEnv.sqlQuery("select * from tallyBill");
+		tEnv.toAppendStream(tallyBill, Row.class).print();
 //		env.execute();
 		
 		StatementSet statementSet = tEnv.createStatementSet();

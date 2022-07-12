@@ -6,10 +6,9 @@ import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.StatementSet;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.table.validate.ValidationResult;
 import org.apache.flink.types.Row;
 
-public class iftvgm {
+public class iftvgm_his2 {
     public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         EnvironmentSettings settings = EnvironmentSettings.newInstance().useBlinkPlanner().inStreamingMode().build();
@@ -388,20 +387,20 @@ public class iftvgm {
         tEnv.executeSql("" +
                 "create view withCTNR_tmp as\n" +
                 "select\n" +
-                "    VSL_IMO_NO,\n" +
-                "    VOYAGE,\n" +
-                "    CTNR_NO,\n" +
-                "    BIZ_STAGE_NO,\n" +
-                "    BIZ_STATUS_CODE,\n" +
-                "    max(BIZ_TIME) as BIZ_TIME\n" +
+                "  VSL_IMO_NO,\n" +
+                "  VOYAGE,\n" +
+                "  CTNR_NO,\n" +
+                "  BIZ_STAGE_NO,\n" +
+                "  BIZ_STATUS_CODE,\n" +
+                "  max(BIZ_TIME) as BIZ_TIME\n" +
                 "FROM withCTNR_DIM\n" +
                 "GROUP BY\n" +
-                "    TUMBLE(wintime, INTERVAL '10' second),\n" +
-                "    VSL_IMO_NO,\n" +
-                "    VOYAGE,\n" +
-                "    CTNR_NO,\n" +
-                "    BIZ_STAGE_NO,\n" +
-                "    BIZ_STATUS_CODE");
+                "  TUMBLE(wintime, INTERVAL '2' minute),\n" +
+                "  VSL_IMO_NO,\n" +
+                "  VOYAGE,\n" +
+                "  CTNR_NO,\n" +
+                "  BIZ_STAGE_NO,\n" +
+                "  BIZ_STATUS_CODE");
 
         Table withCTNR_tmp = tEnv.sqlQuery("select * from withCTNR_tmp");
         tEnv.toAppendStream(withCTNR_tmp, Row.class).print();
@@ -412,12 +411,12 @@ public class iftvgm {
                 "create view withCTNR_RES as\n" +
                 "select withCTNR_DIM.*\n" +
                 "from  withCTNR_DIM join withCTNR_tmp\n" +
-                "                        on withCTNR_DIM.VSL_IMO_NO=withCTNR_tmp.VSL_IMO_NO\n" +
-                "                            and withCTNR_DIM.VOYAGE=withCTNR_tmp.VOYAGE\n" +
-                "                            and withCTNR_DIM.CTNR_NO=withCTNR_tmp.CTNR_NO\n" +
-                "                            and withCTNR_DIM.BIZ_STAGE_NO=withCTNR_tmp.BIZ_STAGE_NO\n" +
-                "                            and withCTNR_DIM.BIZ_STATUS_CODE=withCTNR_tmp.BIZ_STATUS_CODE\n" +
-                "                            and withCTNR_DIM.BIZ_TIME=withCTNR_tmp.BIZ_TIME");
+                "                           on withCTNR_DIM.VSL_IMO_NO=withCTNR_tmp.VSL_IMO_NO\n" +
+                "                           and withCTNR_DIM.VOYAGE=withCTNR_tmp.VOYAGE\n" +
+                "                           and withCTNR_DIM.CTNR_NO=withCTNR_tmp.CTNR_NO\n" +
+                "                           and withCTNR_DIM.BIZ_STAGE_NO=withCTNR_tmp.BIZ_STAGE_NO\n" +
+                "                           and withCTNR_DIM.BIZ_STATUS_CODE=withCTNR_tmp.BIZ_STATUS_CODE\n" +
+                "                           and withCTNR_DIM.BIZ_TIME=withCTNR_tmp.BIZ_TIME");
 
         Table withCTNR_RES = tEnv.sqlQuery("select * from withCTNR_RES");
         tEnv.toAppendStream(withCTNR_RES, Row.class).print();
@@ -427,19 +426,19 @@ public class iftvgm {
         // TODO 关联箱单关系表获得提单号
         tEnv.executeSql("" +
                 "create view billTB as\n" +
-                "select msgId,GID,\n" +
-                "       withCTNR_RES.VSL_IMO_NO,withCTNR_RES.VSL_NAME,withCTNR_RES.VOYAGE,withCTNR_RES.ACCURATE_IMONO,\n" +
-                "       withCTNR_RES.ACCURATE_VSLNAME,obcd.BL_NO,obcd.MASTER_BL_NO,withCTNR_RES.I_E_MARK,\n" +
-                "       withCTNR_RES.BIZ_STAGE_NO,withCTNR_RES.BIZ_STAGE_CODE,withCTNR_RES.BIZ_STAGE_NAME,\n" +
-                "       withCTNR_RES.BIZ_TIME,withCTNR_RES.BIZ_STATUS_CODE,withCTNR_RES.BIZ_STATUS,\n" +
-                "       withCTNR_RES.BIZ_STATUS_DESC,withCTNR_RES.LASTUPDATEDDT,withCTNR_RES.ISDELETED,\n" +
-                "       withCTNR_RES.UUID,withCTNR_RES.BIZ_STATUS_IFFECTIVE\n" +
-                "from withCTNR_RES left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF withCTNR_RES.LASTUPDATEDDT as obcd\n" +
-                "                            on withCTNR_RES.VSL_IMO_NO=obcd.VSL_IMO_NO\n" +
-                "                                and withCTNR_RES.VSL_NAME=obcd.VSL_NAME\n" +
-                "                                and withCTNR_RES.VOYAGE=obcd.VOYAGE\n" +
-                "                                and withCTNR_RES.CTNR_NO=obcd.CTNR_NO\n" +
-                "                                and obcd.ISDELETED=0");
+                "  select msgId,GID,\n" +
+                "         withCTNR_RES.VSL_IMO_NO,withCTNR_RES.VSL_NAME,withCTNR_RES.VOYAGE,withCTNR_RES.ACCURATE_IMONO,\n" +
+                "         withCTNR_RES.ACCURATE_VSLNAME,obcd.BL_NO,obcd.MASTER_BL_NO,withCTNR_RES.I_E_MARK,\n" +
+                "         withCTNR_RES.BIZ_STAGE_NO,withCTNR_RES.BIZ_STAGE_CODE,withCTNR_RES.BIZ_STAGE_NAME,\n" +
+                "         withCTNR_RES.BIZ_TIME,withCTNR_RES.BIZ_STATUS_CODE,withCTNR_RES.BIZ_STATUS,\n" +
+                "         withCTNR_RES.BIZ_STATUS_DESC,withCTNR_RES.LASTUPDATEDDT,withCTNR_RES.ISDELETED,\n" +
+                "         withCTNR_RES.UUID,withCTNR_RES.BIZ_STATUS_IFFECTIVE\n" +
+                "  from withCTNR_RES left join oracle_blctnr_dim FOR SYSTEM_TIME AS OF withCTNR_RES.LASTUPDATEDDT as obcd\n" +
+                "  on withCTNR_RES.VSL_IMO_NO=obcd.VSL_IMO_NO\n" +
+                "  and withCTNR_RES.VSL_NAME=obcd.VSL_NAME\n" +
+                "  and withCTNR_RES.VOYAGE=obcd.VOYAGE\n" +
+                "  and withCTNR_RES.CTNR_NO=obcd.CTNR_NO\n" +
+                "  and obcd.ISDELETED=0");
 
         Table billTB_table = tEnv.sqlQuery("select * from billTB");
         tEnv.toAppendStream(billTB_table, Row.class).print();
@@ -451,41 +450,41 @@ public class iftvgm {
         // TODO 箱，写Oracle
         statementSet.addInsertSql("" +
                 "insert into oracle_track_biz_status_ctnr\n" +
-                "select\n" +
-                "    withCTNR_RES.VSL_IMO_NO,withCTNR_RES.VSL_NAME,withCTNR_RES.VOYAGE,\n" +
-                "    withCTNR_RES.ACCURATE_IMONO,withCTNR_RES.ACCURATE_VSLNAME,\n" +
-                "    withCTNR_RES.CTNR_NO,withCTNR_RES.I_E_MARK,withCTNR_RES.BIZ_STAGE_NO,\n" +
-                "    withCTNR_RES.BIZ_STAGE_CODE,withCTNR_RES.BIZ_STAGE_NAME,\n" +
-                "    withCTNR_RES.BIZ_TIME,withCTNR_RES.BIZ_STATUS_CODE,withCTNR_RES.BIZ_STATUS,\n" +
-                "    withCTNR_RES.BIZ_STATUS_DESC,withCTNR_RES.LASTUPDATEDDT,withCTNR_RES.ISDELETED,\n" +
-                "    withCTNR_RES.UUID,withCTNR_RES.BIZ_STATUS_IFFECTIVE\n" +
-                "from withCTNR_RES left join oracle_ctnr_dim FOR SYSTEM_TIME AS OF withCTNR_RES.LASTUPDATEDDT as ocd\n" +
-                "                            on withCTNR_RES.VSL_IMO_NO = ocd.VSL_IMO_NO\n" +
-                "                                and withCTNR_RES.VOYAGE = ocd.VOYAGE\n" +
-                "                                and withCTNR_RES.CTNR_NO = ocd.CTNR_NO\n" +
-                "                                and withCTNR_RES.BIZ_STAGE_NO = ocd.BIZ_STAGE_NO\n" +
-                "where (ocd.BIZ_TIME is null or withCTNR_RES.BIZ_TIME>ocd.BIZ_TIME)\n" +
+                "  select\n" +
+                "  withCTNR_RES.VSL_IMO_NO,withCTNR_RES.VSL_NAME,withCTNR_RES.VOYAGE,\n" +
+                "  withCTNR_RES.ACCURATE_IMONO,withCTNR_RES.ACCURATE_VSLNAME,\n" +
+                "  withCTNR_RES.CTNR_NO,withCTNR_RES.I_E_MARK,withCTNR_RES.BIZ_STAGE_NO,\n" +
+                "  withCTNR_RES.BIZ_STAGE_CODE,withCTNR_RES.BIZ_STAGE_NAME,\n" +
+                "  withCTNR_RES.BIZ_TIME,withCTNR_RES.BIZ_STATUS_CODE,withCTNR_RES.BIZ_STATUS,\n" +
+                "  withCTNR_RES.BIZ_STATUS_DESC,withCTNR_RES.LASTUPDATEDDT,withCTNR_RES.ISDELETED,\n" +
+                "  withCTNR_RES.UUID,withCTNR_RES.BIZ_STATUS_IFFECTIVE\n" +
+                "  from withCTNR_RES left join oracle_ctnr_dim FOR SYSTEM_TIME AS OF withCTNR_RES.LASTUPDATEDDT as ocd\n" +
+                "  on withCTNR_RES.VSL_IMO_NO = ocd.VSL_IMO_NO\n" +
+                "  and withCTNR_RES.VOYAGE = ocd.VOYAGE\n" +
+                "  and withCTNR_RES.CTNR_NO = ocd.CTNR_NO\n" +
+                "  and withCTNR_RES.BIZ_STAGE_NO = ocd.BIZ_STAGE_NO\n" +
+                "  where (ocd.BIZ_TIME is null or withCTNR_RES.BIZ_TIME>ocd.BIZ_TIME)\n" +
                 "  and withCTNR_RES.BIZ_TIME is not null");
 
         // TODO 箱，写kafka
         statementSet.addInsertSql("" +
                 "insert into kafka_ctn\n" +
-                "select\n" +
-                "    GID,'DATA_FLINK_FULL_FLINK_TRACING_VGM' as APP_NAME,\n" +
-                "    'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
-                "    ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
-                "from\n" +
-                "    (select\n" +
-                "         withCTNR_RES.GID,withCTNR_RES.VSL_IMO_NO,withCTNR_RES.VSL_NAME,\n" +
-                "         withCTNR_RES.VOYAGE,withCTNR_RES.ACCURATE_IMONO,withCTNR_RES.ACCURATE_VSLNAME,\n" +
-                "         withCTNR_RES.CTNR_NO,withCTNR_RES.I_E_MARK,withCTNR_RES.BIZ_STAGE_NO,\n" +
-                "         withCTNR_RES.BIZ_STAGE_CODE,withCTNR_RES.BIZ_STAGE_NAME,withCTNR_RES.BIZ_TIME,\n" +
-                "         withCTNR_RES.BIZ_STATUS_CODE,withCTNR_RES.BIZ_STATUS,withCTNR_RES.BIZ_STATUS_DESC,\n" +
-                "         withCTNR_RES.LASTUPDATEDDT,withCTNR_RES.ISDELETED,withCTNR_RES.UUID,withCTNR_RES.BIZ_STATUS_IFFECTIVE\n" +
-                "     from withCTNR_RES left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF withCTNR_RES.LASTUPDATEDDT as ospd1\n" +
-                "                                 on 'DATA_FLINK_FULL_FLINK_TRACING_VGM'=ospd1.APP_NAME\n" +
-                "                                     and 'DM.TRACK_BIZ_STATUS_CTNR'=ospd1.TABLE_NAME\n" +
-                "     where ospd1.ISCURRENT=1 and withCTNR_RES.BIZ_TIME is not null) as temp1");
+                "  select\n" +
+                "  GID,'DATA_FLINK_FULL_FLINK_TRACING_VGM' as APP_NAME,\n" +
+                "  'DM.TRACK_BIZ_STATUS_CTNR' as TABLE_NAME, 'I' as SUBSCRIBE_TYPE,\n" +
+                "  ROW(VSL_IMO_NO,VSL_NAME,VOYAGE,ACCURATE_IMONO,ACCURATE_VSLNAME,CTNR_NO,I_E_MARK,BIZ_STAGE_NO,BIZ_STAGE_CODE,BIZ_STAGE_NAME,BIZ_TIME,BIZ_STATUS_CODE,BIZ_STATUS,BIZ_STATUS_DESC,LASTUPDATEDDT,ISDELETED,UUID,BIZ_STATUS_IFFECTIVE) as DATA\n" +
+                "  from\n" +
+                "  (select\n" +
+                "  withCTNR_RES.GID,withCTNR_RES.VSL_IMO_NO,withCTNR_RES.VSL_NAME,\n" +
+                "  withCTNR_RES.VOYAGE,withCTNR_RES.ACCURATE_IMONO,withCTNR_RES.ACCURATE_VSLNAME,\n" +
+                "  withCTNR_RES.CTNR_NO,withCTNR_RES.I_E_MARK,withCTNR_RES.BIZ_STAGE_NO,\n" +
+                "  withCTNR_RES.BIZ_STAGE_CODE,withCTNR_RES.BIZ_STAGE_NAME,withCTNR_RES.BIZ_TIME,\n" +
+                "  withCTNR_RES.BIZ_STATUS_CODE,withCTNR_RES.BIZ_STATUS,withCTNR_RES.BIZ_STATUS_DESC,\n" +
+                "  withCTNR_RES.LASTUPDATEDDT,withCTNR_RES.ISDELETED,withCTNR_RES.UUID,withCTNR_RES.BIZ_STATUS_IFFECTIVE\n" +
+                "  from withCTNR_RES left join oracle_subscribe_papam_dim FOR SYSTEM_TIME as OF withCTNR_RES.LASTUPDATEDDT as ospd1\n" +
+                "  on 'DATA_FLINK_FULL_FLINK_TRACING_VGM'=ospd1.APP_NAME\n" +
+                "  and 'DM.TRACK_BIZ_STATUS_CTNR'=ospd1.TABLE_NAME\n" +
+                "  where ospd1.ISCURRENT=1 and withCTNR_RES.BIZ_TIME is not null) as temp1");
 
         // TODO 提单，写Oracle
         statementSet.addInsertSql("" +
